@@ -1,6 +1,6 @@
 {
-  "appId": "com.transportcorp.app",
-  "appName": "Transport Corporation",
+  "appId": "com.employmanagement.app",
+  "appName": "Employ Management",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

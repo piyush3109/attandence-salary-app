@@ -31,7 +31,7 @@ const Login = () => {
                     <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-[2rem] flex items-center justify-center text-white mx-auto mb-6 shadow-2xl shadow-primary-500/40 rotate-12 hover:rotate-0 transition-transform duration-500 group cursor-pointer">
                         <Lock className="w-10 h-10 group-hover:scale-110 transition-transform" />
                     </div>
-                    <h2 className="text-4xl font-black text-white tracking-tight">Transport Corporation Company</h2>
+                    <h2 className="text-4xl font-black text-white tracking-tight">Employ Management App</h2>
                     <p className="text-gray-400 mt-3 text-lg font-medium">Empowering the Indian Workforce</p>
                 </div>
 
