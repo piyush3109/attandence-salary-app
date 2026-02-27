@@ -30,10 +30,10 @@ const messageSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
-    // Message type: text, image, file, gif
+    // Message type: text, image, file, gif, audio
     messageType: {
         type: String,
-        enum: ['text', 'image', 'file', 'gif'],
+        enum: ['text', 'image', 'file', 'gif', 'audio'],
         default: 'text'
     },
     // For image/file attachments

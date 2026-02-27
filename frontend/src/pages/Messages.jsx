@@ -18,7 +18,9 @@ import {
     Film,
     Loader2,
     Pencil,
-    Trash2
+    Trash2,
+    Mic,
+    Square
 } from 'lucide-react';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -175,6 +177,13 @@ const MessageBubble = React.memo(({ msg, isMe, onEdit, onDelete }) => {
                         {msg.content && <p className="text-sm">{msg.content}</p>}
                     </div>
                 );
+            case 'audio':
+                return (
+                    <div className="space-y-2 min-w-[200px]">
+                        <audio controls className="h-10 w-full outline-none" src={msg.attachment?.url?.startsWith('http') ? msg.attachment.url : `${API_BASE}${msg.attachment?.url}`} />
+                        {msg.content && <p className="text-sm">{msg.content}</p>}
+                    </div>
+                );
             default:
                 return <span>{msg.content}</span>;
         }
@@ -230,6 +239,7 @@ const Messages = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState([]);
+    const [showAllUsers, setShowAllUsers] = useState(false);
     const [isMobileListOpen, setIsMobileListOpen] = useState(true);
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [typingUser, setTypingUser] = useState(null);
@@ -241,6 +251,13 @@ const Messages = () => {
     const [sending, setSending] = useState(false);
     const [editingMessage, setEditingMessage] = useState(null);
     const [editContent, setEditContent] = useState('');
+
+    // Audio recording state
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const recordingIntervalRef = useRef(null);
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -484,6 +501,85 @@ const Messages = () => {
         }
     };
 
+    // ─── Audio Recording ────────────────────────────────
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+
+            mediaRecorderRef.current.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                audioChunksRef.current = [];
+
+                // Construct a file to send
+                const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+
+                // Re-use logic for sending file
+                setSending(true);
+                const formData = new FormData();
+                formData.append('file', audioFile);
+                formData.append('receiverId', activeChat.otherUser.id);
+                formData.append('receiverModel', activeChat.otherUser.model);
+
+                try {
+                    const { data } = await api.post('/messages/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    setMessages(prev => [...prev, data]);
+                    const convId = activeChat.conversationId || data.conversationId || `${user?._id}_${activeChat.otherUser.id}`;
+                    emitMessage(convId, data);
+                    fetchConversations();
+                } catch (error) {
+                    toast.error('Failed to send voice note');
+                } finally {
+                    setSending(false);
+                }
+
+                stream.getTracks().forEach(track => track.stop()); // release mic
+            };
+
+            audioChunksRef.current = [];
+            setRecordingTime(0);
+            setIsRecording(true);
+            mediaRecorderRef.current.start();
+
+            // Start timer
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error accessing mic:', error);
+            toast.error('Microphone access denied. Please allow it in browser settings.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            clearInterval(recordingIntervalRef.current);
+        }
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            // override onstop so it doesn't send
+            mediaRecorderRef.current.onstop = () => {
+                audioChunksRef.current = [];
+                mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+            };
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            clearInterval(recordingIntervalRef.current);
+            setRecordingTime(0);
+        }
+    };
+
     const startNewChat = (selectedUser) => {
         setActiveChat({ otherUser: selectedUser });
         setSearchQuery('');
@@ -528,18 +624,27 @@ const Messages = () => {
                 !isMobileListOpen && "hidden md:flex"
             )}>
                 <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-                    <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Messages</h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Messages</h2>
+                        <button onClick={() => { setShowAllUsers(!showAllUsers); setSearchQuery(''); }}
+                            className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 p-2 rounded-xl hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors" title="New Conversation">
+                            <MessageSquare className="w-5 h-5" />
+                        </button>
+                    </div>
                     <div className="relative group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
                         <input type="text" placeholder="Search people..."
                             className="w-full pl-12 pr-4 py-2.5 md:py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl md:rounded-2xl text-xs font-bold focus:ring-2 focus:ring-primary-500 transition-all dark:text-white"
-                            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                            value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setShowAllUsers(true); }} />
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide">
-                    {searchQuery ? (
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative pb-20">
+                    {searchQuery || showAllUsers ? (
                         <div className="px-3 md:px-4 space-y-1">
+                            {showAllUsers && !searchQuery && (
+                                <p className="text-xs font-bold text-gray-400 px-2 py-1 mb-2">ALL USERS</p>
+                            )}
                             {filteredUsers.map(u => (
                                 <button key={u.id} onClick={() => startNewChat(u)}
                                     className="w-full flex items-center gap-3 p-3 md:p-4 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-2xl md:rounded-3xl transition-all text-left">
@@ -705,32 +810,59 @@ const Messages = () => {
                                 <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-3 items-center">
                                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden"
                                         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar,.mp4,.webm,.mp3,.wav" />
-                                    <button type="button" onClick={() => fileInputRef.current?.click()}
-                                        className="p-2.5 md:p-3 text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all" title="Attach file">
-                                        <Paperclip className="w-5 h-5" />
-                                    </button>
-                                    <button type="button" onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
-                                        className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden sm:block",
-                                            showGifPicker ? "text-primary-500 bg-primary-50 dark:bg-primary-900/20" : "text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-                                        )} title="Send GIF">
-                                        <Film className="w-5 h-5" />
-                                    </button>
 
-                                    <div className="flex-1 relative group">
-                                        <input className="w-full pl-4 md:pl-6 pr-10 md:pr-12 py-3 md:py-4 bg-white dark:bg-gray-800 border-none rounded-xl md:rounded-[1.5rem] text-sm font-bold shadow-lg shadow-primary-500/5 focus:ring-4 focus:ring-primary-500/10 transition-all dark:text-white"
-                                            placeholder={selectedFile ? "Add a caption..." : "Type a message..."}
-                                            value={newMessage} onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }} />
-                                        <button type="button" onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
-                                            className={cn("absolute right-2 md:right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all",
-                                                showEmojiPicker ? "text-amber-500 bg-amber-50 dark:bg-amber-900/20" : "text-gray-400 hover:text-amber-500")}>
-                                            <Smile className="w-5 h-5" />
+                                    {isRecording ? (
+                                        <div className="flex-1 flex items-center justify-between bg-red-50 dark:bg-red-900/20 rounded-[1.5rem] px-4 md:px-6 py-3 border border-red-200 dark:border-red-800">
+                                            <div className="flex items-center gap-3 text-red-500 font-bold animate-pulse">
+                                                <Mic className="w-5 h-5" />
+                                                <span className="text-sm">Recording... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                                            </div>
+                                            <button type="button" onClick={cancelRecording} className="p-1 px-3 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-xl text-xs font-bold transition-colors">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <button type="button" onClick={() => fileInputRef.current?.click()}
+                                                className="p-2.5 md:p-3 text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all" title="Attach file">
+                                                <Paperclip className="w-5 h-5" />
+                                            </button>
+                                            <button type="button" onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                                                className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden sm:block",
+                                                    showGifPicker ? "text-primary-500 bg-primary-50 dark:bg-primary-900/20" : "text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                                                )} title="Send GIF">
+                                                <Film className="w-5 h-5" />
+                                            </button>
+
+                                            <div className="flex-1 relative group">
+                                                <input className="w-full pl-4 md:pl-6 pr-10 md:pr-12 py-3 md:py-4 bg-white dark:bg-gray-800 border-none rounded-xl md:rounded-[1.5rem] text-sm font-bold shadow-lg shadow-primary-500/5 focus:ring-4 focus:ring-primary-500/10 transition-all dark:text-white outline-none"
+                                                    placeholder={selectedFile ? "Add a caption..." : "Type a message..."}
+                                                    value={newMessage} onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }} />
+                                                <button type="button" onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                                                    className={cn("absolute right-2 md:right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all",
+                                                        showEmojiPicker ? "text-amber-500 bg-amber-50 dark:bg-amber-900/20" : "text-gray-400 hover:text-amber-500")}>
+                                                    <Smile className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {isRecording ? (
+                                        <button type="button" onClick={stopRecording}
+                                            className="p-3 md:p-4 bg-red-600 text-white rounded-xl md:rounded-[1.5rem] shadow-xl shadow-red-500/30 hover:scale-105 active:scale-95 transition-all outline-none">
+                                            <Square className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                                         </button>
-                                    </div>
-
-                                    <button type="submit" disabled={(!newMessage.trim() && !selectedFile) || sending}
-                                        className="p-3 md:p-4 bg-primary-600 text-white rounded-xl md:rounded-[1.5rem] shadow-xl shadow-primary-500/30 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all">
-                                        {sending ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Send className="w-5 h-5 md:w-6 md:h-6" />}
-                                    </button>
+                                    ) : (
+                                        <button
+                                            type={newMessage.trim() || selectedFile ? 'submit' : 'button'}
+                                            onClick={(!newMessage.trim() && !selectedFile) ? startRecording : undefined}
+                                            disabled={sending}
+                                            className="p-3 md:p-4 bg-primary-600 text-white rounded-xl md:rounded-[1.5rem] shadow-xl shadow-primary-500/30 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all outline-none">
+                                            {sending ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> :
+                                                (newMessage.trim() || selectedFile ? <Send className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />)
+                                            }
+                                        </button>
+                                    )}
                                 </form>
                             </div>
                         </div>

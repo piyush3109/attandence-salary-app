@@ -104,6 +104,8 @@ const NotificationBell = () => {
 
         // Listen for new messages
         socket.on('new_message', (data) => {
+            if (data.sender && data.sender.id && data.sender.id.toString() === user._id.toString()) return;
+
             addNotification({
                 type: 'message',
                 title: '💬 New Message',
@@ -159,6 +161,11 @@ const NotificationBell = () => {
 
         // Generic notification channel
         socket.on('notification', (data) => {
+            // If the notification has a specific receiverId, only show it to them
+            if (data.receiverId && data.receiverId.toString() !== user._id.toString()) return;
+            // Never show notifications to the sender themselves
+            if (data.senderId && data.senderId.toString() === user._id.toString()) return;
+
             addNotification({
                 type: data.type || 'general',
                 title: data.title || '🔔 Notification',

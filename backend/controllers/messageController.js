@@ -132,6 +132,10 @@ const sendMessageWithFile = async (req, res) => {
             : await Admin.findById(req.user._id);
 
         const isImage = file.mimetype.startsWith('image/');
+        const isAudio = file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/webm'); // some browsers record audio via MediaRecorder as video/webm
+        let msgType = 'file';
+        if (isImage) msgType = 'image';
+        if (isAudio) msgType = 'audio';
 
         const message = await Message.create({
             sender: {
@@ -146,7 +150,7 @@ const sendMessageWithFile = async (req, res) => {
                 name: receiver.name || receiver.username
             },
             content: content || '',
-            messageType: isImage ? 'image' : 'file',
+            messageType: msgType,
             attachment: {
                 url: `/uploads/${file.filename}`,
                 filename: file.originalname,
