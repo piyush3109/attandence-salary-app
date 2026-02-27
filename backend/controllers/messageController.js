@@ -89,6 +89,20 @@ const sendMessage = async (req, res) => {
         }
 
         const message = await Message.create(messageData);
+
+        // Emit notification to receiver
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('notification', {
+                type: 'message',
+                title: `💬 ${messageData.sender.name}`,
+                message: messageType === 'gif' ? 'Sent a GIF' : (content || 'Sent a message'),
+                priority: 'low',
+                receiverId: receiverId,
+                senderId: req.user._id,
+            });
+        }
+
         res.status(201).json(message);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -141,6 +155,19 @@ const sendMessageWithFile = async (req, res) => {
             },
             conversationId: [req.user._id, receiverId].sort().join('_')
         });
+
+        // Emit notification to receiver
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('notification', {
+                type: 'message',
+                title: `💬 ${req.user.name || req.user.username}`,
+                message: isImage ? 'Sent an image' : `Sent a file: ${file.originalname}`,
+                priority: 'low',
+                receiverId: receiverId,
+                senderId: req.user._id,
+            });
+        }
 
         res.status(201).json(message);
     } catch (error) {
