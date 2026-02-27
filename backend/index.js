@@ -101,6 +101,26 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     lastModified: true
 }));
 
+// Temporary route to fix old employees orgId
+app.get('/api/fix-db-org', async (req, res) => {
+    try {
+        const Employee = require('./models/Employee');
+        const Admin = require('./models/Admin');
+
+        const empResult = await Employee.updateMany({}, { $set: { orgId: 'default' } });
+        const adminResult = await Admin.updateMany({}, { $set: { orgId: 'default' } });
+
+        res.json({
+            success: true,
+            message: 'Successfully migrated orgIds to default',
+            employeeModified: empResult.modifiedCount,
+            adminModified: adminResult.modifiedCount
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes'));
