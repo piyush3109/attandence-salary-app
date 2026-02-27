@@ -1,4 +1,4 @@
-const CACHE_NAME = 'transport-corp-v3';
+const CACHE_NAME = 'employ-management-v3';
 const MAX_CACHE_SIZE = 20;
 
 // Install: skip waiting immediately, don't try to cache anything on install

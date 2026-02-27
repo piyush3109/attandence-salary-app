@@ -116,8 +116,8 @@ const Sidebar = () => {
                                 <IndianRupee className="w-6 h-6" />
                             </div>
                             <div className="flex flex-col leading-none">
-                                <span className="tracking-tight text-lg">Transport</span>
-                                <span className="text-primary-600 text-xs font-black uppercase tracking-widest">Corporation</span>
+                                <span className="tracking-tight text-lg">Employ</span>
+                                <span className="text-primary-600 text-xs font-black uppercase tracking-widest">Management App</span>
                             </div>
                         </h1>
                     </div>

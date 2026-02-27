@@ -133,9 +133,9 @@ const Employees = () => {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Personnel Management</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage transport workforce, permission levels, and logistics rates.</p>
+                <div className="flex-1">
+                    <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Team Central</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage core workforce, permission levels, and pay rates.</p>
                 </div>
                 {isAuthority && (
                     <button

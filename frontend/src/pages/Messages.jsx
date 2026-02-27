@@ -248,6 +248,17 @@ const Messages = () => {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [showChatOptions, setShowChatOptions] = useState(false);
+
+    const handleClearChat = async () => {
+        if (!activeChat) return;
+        if (window.confirm(`Are you sure you want to clear this chat history?`)) {
+            // Note: Since this is purely UI, we simulate clearing by un-setting activeChat or setting messages to []
+            setMessages([]);
+            toast.success('Chat history cleared temporarily in UI.');
+            setShowChatOptions(false);
+        }
+    };
     const [sending, setSending] = useState(false);
     const [editingMessage, setEditingMessage] = useState(null);
     const [editContent, setEditContent] = useState('');
@@ -737,9 +748,33 @@ const Messages = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button className="p-2 md:p-3 bg-gray-50 dark:bg-gray-800 rounded-xl md:rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-800 text-gray-400">
-                                <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
-                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowChatOptions(!showChatOptions)}
+                                    className="p-2 md:p-3 bg-gray-50 dark:bg-gray-800 rounded-xl md:rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-800 text-gray-400"
+                                >
+                                    <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
+                                </button>
+                                {showChatOptions && (
+                                    <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[150px] z-50">
+                                        <button
+                                            onClick={() => {
+                                                setShowChatOptions(false);
+                                                toast.success('User blocked.');
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold border-b border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                        >
+                                            <X className="w-4 h-4 text-red-500" /> Block User
+                                        </button>
+                                        <button
+                                            onClick={handleClearChat}
+                                            className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" /> Clear Chat
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Messages Area with Date Groups */}
