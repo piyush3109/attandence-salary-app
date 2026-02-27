@@ -176,7 +176,12 @@ const getSalarySlip = async (req, res) => {
         }
 
         const overtimePay = overtimeHours * hourlyRate * 1.5;
-        const totalEarnings = baseSalary + overtimePay;
+        // Check for manual overrides from admin
+        const manualBonus = Number(req.query.bonus) || 0;
+        const manualFine = Number(req.query.fine) || 0;
+
+        const totalEarnings = baseSalary + overtimePay + manualBonus;
+        const totalDeductions = totalAdvance + manualFine;
 
         const slipData = [{
             name: emp.name,
@@ -189,9 +194,9 @@ const getSalarySlip = async (req, res) => {
             overtimeHours,
             overtimePay,
             baseSalary,
-            totalAdvance,
+            totalAdvance: totalDeductions,
             totalEarnings,
-            finalPayable: totalEarnings - totalAdvance
+            finalPayable: totalEarnings - totalDeductions
         }];
 
         res.header('Content-Type', 'application/pdf');

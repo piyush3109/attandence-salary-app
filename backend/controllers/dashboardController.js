@@ -33,7 +33,7 @@ const getDashboardStats = async (req, res) => {
         // Admin/Manager Stats
         const totalEmployees = await Employee.countDocuments({ orgId, active: true });
         const today = DateTime.now().startOf('day').toJSDate();
-        const todayAttendance = await Attendance.find({ orgId, date: today });
+        const todayAttendance = await Attendance.find({ orgId, date: { $gte: today } }).populate('employee');
 
         const presentToday = todayAttendance.filter(a => a.status === 'Present').length;
         const absentToday = todayAttendance.filter(a => a.status === 'Absent').length;
@@ -58,12 +58,30 @@ const getDashboardStats = async (req, res) => {
             }
         });
 
+        // Fetch Recent Activity
+        const Task = require('../models/Task');
+        const Message = require('../models/Message');
+        const recentTasks = await Task.find({ orgId }).sort({ createdAt: -1 }).limit(1).populate('assignedTo');
+        const recentMessages = await Message.find({ orgId }).sort({ createdAt: -1 }).limit(1).populate('sender');
+
+        const recentActivity = [];
+        if (todayAttendance.length > 0) {
+            recentActivity.push({ type: 'Attendance', title: 'Attendance logged', subtitle: `Today by ${todayAttendance[todayAttendance.length - 1]?.employee?.name || 'an employee'}`, icon: 'CalendarCheck' });
+        }
+        if (recentMessages.length > 0) {
+            recentActivity.push({ type: 'Message', title: 'New message available', subtitle: `From ${recentMessages[0]?.sender?.name || 'Someone'}`, icon: 'MessageSquare' });
+        }
+        if (recentTasks.length > 0) {
+            recentActivity.push({ type: 'Task', title: 'Task updated', subtitle: `${recentTasks[0].title}`, icon: 'ClipboardList' });
+        }
+
         res.json({
             role: 'admin',
             totalEmployees,
             presentToday,
             absentToday,
-            estimatedSalary
+            estimatedSalary,
+            recentActivity
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

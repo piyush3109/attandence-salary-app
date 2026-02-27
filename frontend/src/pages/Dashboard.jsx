@@ -381,33 +381,31 @@ const Dashboard = () => {
                             Activity
                         </h3>
                         <div className="space-y-3">
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                                    <UserCheck className="w-4 h-4 text-emerald-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold dark:text-white truncate">Attendance logged</p>
-                                    <p className="text-[10px] text-gray-400">Today</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                                    <MessageSquare className="w-4 h-4 text-blue-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold dark:text-white truncate">New messages available</p>
-                                    <p className="text-[10px] text-gray-400">Check inbox</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                    <ClipboardList className="w-4 h-4 text-amber-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold dark:text-white truncate">Tasks updated</p>
-                                    <p className="text-[10px] text-gray-400">Check work hub</p>
-                                </div>
-                            </div>
+                            {stats.recentActivity && stats.recentActivity.length > 0 ? (
+                                stats.recentActivity.map((act, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${act.type === 'Attendance' ? 'bg-emerald-500/10 text-emerald-500' : act.type === 'Message' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                            {act.type === 'Attendance' ? <CalendarCheck className="w-4 h-4" /> : act.type === 'Message' ? <MessageSquare className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold dark:text-white truncate">{act.title}</p>
+                                            <p className="text-[10px] text-gray-400">{act.subtitle}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                            <CalendarCheck className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold dark:text-white truncate">Attendance Tracking Ready</p>
+                                            <p className="text-[10px] text-gray-400">Waiting for logs...</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

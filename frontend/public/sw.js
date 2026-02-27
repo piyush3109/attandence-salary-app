@@ -51,13 +51,15 @@ self.addEventListener('fetch', (event) => {
 
 // Push notifications
 self.addEventListener('push', (event) => {
-    let data = { title: 'Transport Corporation', body: 'You have a new notification' };
-    if (event.data) {
-        try { data = event.data.json(); } catch (e) { data.body = event.data.text(); }
+    let data = { title: 'Employ Management App', body: 'You have a new notification' };
+    try {
+        data = event.data.json();
+    } catch (e) {
+        data = { title: 'Employ Management App', body: event.data.text() };
     }
 
     event.waitUntil(
-        self.registration.showNotification(data.title || 'Transport Corporation', {
+        self.registration.showNotification(data.title || 'Employ Management App', {
             body: data.body || data.message,
             icon: '/icons/icon-192x192.png',
             badge: '/icons/icon-72x72.png',

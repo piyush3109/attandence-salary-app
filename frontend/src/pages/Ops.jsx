@@ -219,7 +219,10 @@ const Ops = () => {
                                                         <FileText className="w-4 h-4" /> Letter
                                                     </button>
                                                 )}
-                                                <button className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-primary-500 text-gray-400 hover:text-white rounded-2xl transition-all">
+                                                <button
+                                                    onClick={() => toast.success(`Viewing full intel for ${emp.name}`)}
+                                                    className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-primary-500 text-gray-400 hover:text-white rounded-2xl transition-all"
+                                                >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
                                             </div>
@@ -350,26 +353,39 @@ const Ops = () => {
                                 </div>
                                 <div className="space-y-4">
                                     {[
-                                        { label: 'PF Filing Period', status: 'Compliant', date: 'Feb 2026', type: 'PF' },
-                                        { label: 'ESI Contribution', status: 'Compliant', date: 'Feb 2026', type: 'ESI' },
-                                        { label: 'TDS Remittance', status: 'Pending', date: 'Mar 2026', type: 'TDS' },
-                                    ].map(item => (
-                                        <div key={item.label} className="flex justify-between items-center p-5 bg-gray-50 dark:bg-gray-800/50 rounded-3xl group border border-transparent hover:border-emerald-500/20 transition-all">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center text-[10px] font-black group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
-                                                    {item.type}
+                                        { id: 1, label: 'PF Filing Period', defaultStatus: 'Compliant', date: 'Feb 2026', type: 'PF' },
+                                        { id: 2, label: 'ESI Contribution', defaultStatus: 'Compliant', date: 'Feb 2026', type: 'ESI' },
+                                        { id: 3, label: 'TDS Remittance', defaultStatus: 'Pending', date: 'Mar 2026', type: 'TDS' },
+                                    ].map(item => {
+                                        const localStatus = localStorage.getItem(`gov_${item.id}`) || item.defaultStatus;
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                onClick={() => {
+                                                    const nextStatus = localStatus === 'Compliant' ? 'Pending' : 'Compliant';
+                                                    localStorage.setItem(`gov_${item.id}`, nextStatus);
+                                                    toast.success(`${item.label} updated to ${nextStatus}`);
+                                                    // Force a re-render
+                                                    setActiveTab(activeTab);
+                                                }}
+                                                className="flex justify-between items-center p-5 bg-gray-50 dark:bg-gray-800/50 rounded-3xl group border border-transparent hover:border-emerald-500/20 transition-all cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center text-[10px] font-black group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
+                                                        {item.type}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black dark:text-white uppercase tracking-tight">{item.label}</p>
+                                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{item.date}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-black dark:text-white uppercase tracking-tight">{item.label}</p>
-                                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{item.date}</p>
-                                                </div>
+                                                <span className={cn(
+                                                    "px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em]",
+                                                    localStatus === 'Compliant' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+                                                )}>{localStatus}</span>
                                             </div>
-                                            <span className={cn(
-                                                "px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] px-3",
-                                                item.status === 'Compliant' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
-                                            )}>{item.status}</span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

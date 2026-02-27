@@ -18,6 +18,7 @@ const Salary = () => {
     const [report, setReport] = useState([]);
     const [loading, setLoading] = useState(false);
     const [editingRate, setEditingRate] = useState(null); // { id, name, rate, type }
+    const [editingAdjustment, setEditingAdjustment] = useState(null); // { id, name, bonus, fine }
     const [newRate, setNewRate] = useState('');
 
     const fetchReport = async () => {
@@ -53,23 +54,6 @@ const Salary = () => {
         }
     };
 
-    const handleDownloadSlip = async (employeeId, employeeName) => {
-        try {
-            const response = await api.get(`/salary/slip/${employeeId}?month=${month}&year=${year}`, {
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `SalarySlip_${employeeName}_${month}_${year}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (error) {
-            toast.error('Failed to download salary slip');
-        }
-    };
-
     const handleUpdateRate = async (e) => {
         e.preventDefault();
         try {
@@ -80,6 +64,30 @@ const Salary = () => {
         } catch (error) {
             toast.error('Failed to update rate');
         }
+    };
+
+    const handleDownloadSlip = async (employeeId, employeeName) => {
+        try {
+            const extraQuery = editingAdjustment ? `&bonus=${editingAdjustment.bonus}&fine=${editingAdjustment.fine}` : '';
+            const response = await api.get(`/salary/slip/${employeeId}?month=${month}&year=${year}${extraQuery}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `SalarySlip_${employeeName}_${month}_${year}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            if (editingAdjustment) setEditingAdjustment(null);
+        } catch (error) {
+            toast.error('Failed to download salary slip');
+        }
+    };
+
+    const handlePrintWithAdjustment = (e) => {
+        e.preventDefault();
+        handleDownloadSlip(editingAdjustment.id, editingAdjustment.name);
     };
 
     const months = [
@@ -219,6 +227,15 @@ const Salary = () => {
                                             <IndianRupee className="w-4 h-4" />
                                         </button>
                                         <button
+                                            onClick={() => {
+                                                setEditingAdjustment({ id: item._id, name: item.name, bonus: 0, fine: 0 });
+                                            }}
+                                            className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-600 hover:text-white rounded-xl transition-all group/btn shadow-sm"
+                                            title="Adjust Payslip (Bonus/Fine)"
+                                        >
+                                            <MinusCircle className="w-4 h-4" />
+                                        </button>
+                                        <button
                                             onClick={() => handleDownloadSlip(item._id, item.name)}
                                             className="p-3 bg-gray-100 dark:bg-gray-800 hover:bg-primary-500 hover:text-white rounded-xl transition-all group/btn shadow-sm"
                                             title="Download Salary Slip"
@@ -319,6 +336,53 @@ const Salary = () => {
                                 </button>
                                 <button type="submit" className="btn flex-1 bg-emerald-600 text-white hover:bg-emerald-700">
                                     Update Rate
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Adjustment Modal */}
+            {editingAdjustment && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in zoom-in duration-300">
+                        <div className="text-center space-y-4 mb-8">
+                            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <MinusCircle className="w-8 h-8" />
+                            </div>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white">Adjust Payslip</h2>
+                            <p className="text-gray-500 text-sm">Add manual bonus or fine for <span className="font-bold text-gray-900 dark:text-white">{editingAdjustment.name}</span> passing to slip generated.</p>
+                        </div>
+
+                        <form onSubmit={handlePrintWithAdjustment} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest pl-1">Bonus Addition (₹)</label>
+                                <input
+                                    type="number"
+                                    className="input bg-emerald-50 dark:bg-emerald-900/10 text-xl font-black py-4 border-emerald-500/20"
+                                    value={editingAdjustment.bonus}
+                                    onChange={(e) => setEditingAdjustment({ ...editingAdjustment, bonus: e.target.value })}
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest pl-1">Fine Deduction (₹)</label>
+                                <input
+                                    type="number"
+                                    className="input bg-rose-50 dark:bg-rose-900/10 text-xl font-black py-4 border-rose-500/20"
+                                    value={editingAdjustment.fine}
+                                    onChange={(e) => setEditingAdjustment({ ...editingAdjustment, fine: e.target.value })}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button type="button" className="btn flex-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400" onClick={() => setEditingAdjustment(null)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn flex-1 bg-amber-600 text-white hover:bg-amber-700">
+                                    Print PDF
                                 </button>
                             </div>
                         </form>
