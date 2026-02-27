@@ -1,4 +1,4 @@
-# 🚛 Transport Corporation: Workforce & Payroll Engine
+# 🚛 Employ Management App: Workforce & Payroll Engine
 
 <div align="center">
   <img src="https://img.shields.io/badge/Version-2.5.0-blue?style=for-the-badge" alt="Version">
@@ -11,7 +11,7 @@
 ---
 
 ### 🌟 Project Vision
-A comprehensive, full-stack ERP solution tailored for transport companies to manage their most valuable asset: **People**. This system automates the complex logistics of daily attendance, cash advances, and monthly payroll, ensuring absolute precision and transparency.
+A comprehensive, full-stack ERP solution to manage your most valuable asset: **People**. This system automates the complex logistics of daily attendance, cash advances, and monthly payroll, ensuring absolute precision and transparency.
 
 ---
 
