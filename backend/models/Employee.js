@@ -12,7 +12,7 @@ const employeeSchema = new mongoose.Schema({
     },
     orgId: {
         type: String,
-        default: 'ORG-HYBRID-MAIN'
+        default: 'default'
     },
     reportsTo: {
         type: mongoose.Schema.Types.ObjectId,
