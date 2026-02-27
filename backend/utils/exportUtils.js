@@ -21,9 +21,8 @@ const generateSalaryPDF = (report, month, year, res) => {
         doc.fillColor('#ffffff').fontSize(24).font('Helvetica-Bold').text('SALARY SLIP', 50, 40);
         doc.fontSize(12).font('Helvetica').text(`${monthName} ${year}`, 50, 70);
 
-        // Company Details (Placeholder)
-        doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text('AttendancePro Inc.', 400, 40, { align: 'right' });
-        doc.fontSize(10).font('Helvetica').text('123 Workforce Avenue, Suite 100', 400, 60, { align: 'right' });
+        doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text('Employ Management App', 400, 40, { align: 'right' });
+        doc.fontSize(10).font('Helvetica').text('Operations Center, HQ Command', 400, 60, { align: 'right' });
 
         doc.fillColor('#000000').moveDown(4);
 

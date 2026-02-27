@@ -68,8 +68,8 @@ const generateExperienceLetter = async (req, res) => {
         doc.pipe(stream);
 
         // Letterhead
-        doc.fontSize(20).text('HYBRID LINK CORP', { align: 'center' });
-        doc.fontSize(10).text('123 Corporate Plaza, Digital Valley, India', { align: 'center' });
+        doc.fontSize(20).text('EMPLOY MANAGEMENT APP', { align: 'center' });
+        doc.fontSize(10).text('Operations Center, HQ Command, Jaipur', { align: 'center' });
         doc.moveDown(2);
 
         doc.fontSize(16).text('TO WHOM IT MAY CONCERN', { align: 'center', underline: true });
@@ -81,14 +81,14 @@ const generateExperienceLetter = async (req, res) => {
         const joinDate = employee.joiningDate ? DateTime.fromJSDate(employee.joiningDate).toFormat('dd LLL yyyy') : 'N/A';
         const exitDate = employee.exitDate ? DateTime.fromJSDate(employee.exitDate).toFormat('dd LLL yyyy') : 'Present';
 
-        doc.text(`This is to certify that Mr./Ms. ${employee.name} (ID: ${employee.employeeId}) was employed with Hybrid Link Corp from ${joinDate} to ${exitDate}.`, { align: 'justify' });
+        doc.text(`This is to certify that Mr./Ms. ${employee.name} (ID: ${employee.employeeId}) was employed with Employ Management App from ${joinDate} to ${exitDate}.`, { align: 'justify' });
         doc.moveDown();
         doc.text(`During this tenure, ${employee.name} served as a ${employee.position} and exhibited remarkable dedication, professional competence, and high ethical standards.`, { align: 'justify' });
         doc.moveDown();
         doc.text(`We wish ${employee.name} the very best in all future endeavors.`);
         doc.moveDown(4);
 
-        doc.text('For Hybrid Link Corp,');
+        doc.text('For Employ Management App,');
         doc.moveDown(2);
         doc.text('Authorized Signatory');
 
