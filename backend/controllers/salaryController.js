@@ -96,6 +96,16 @@ const getSalaryReport = async (req, res) => {
             return generateSalaryPDF(report, month, year, res);
         }
 
+        // Emit salary notification
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('salary_update', {
+                message: `Salary report for ${start.toFormat('MMMM yyyy')} has been generated`,
+                month,
+                year,
+            });
+        }
+
         res.json(report);
     } catch (error) {
         res.status(400).json({ message: error.message });

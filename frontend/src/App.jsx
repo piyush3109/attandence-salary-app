@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/layout/Layout';
+import InstallPrompt from './components/pwa/InstallPrompt';
 
 // ─── Lazy Loaded Pages (code-splitting for fast initial load) ───
 const Login = lazy(() => import('./pages/Login'));
@@ -63,6 +64,10 @@ function App() {
                         </Route>
                     </Routes>
                 </Suspense>
+
+                {/* PWA Install Prompt */}
+                <InstallPrompt />
+
                 <ToastContainer position="bottom-right" theme="colored" autoClose={3000} limit={3} />
             </AuthProvider>
         </Router>

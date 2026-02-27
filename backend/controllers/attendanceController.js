@@ -55,6 +55,17 @@ const markAttendance = async (req, res) => {
             }
         }
 
+        // Emit real-time notification
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('attendance_update', {
+                employeeId,
+                status,
+                message: `Attendance marked as ${status} for ${DateTime.fromISO(date).toFormat('dd MMM yyyy')}`,
+                date: date,
+            });
+        }
+
         res.json(attendanceRecord);
     } catch (error) {
         res.status(400).json({ message: error.message });

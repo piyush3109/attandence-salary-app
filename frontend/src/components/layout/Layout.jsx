@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import NotificationBell from '../notifications/NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 
 const Layout = () => {
@@ -25,6 +26,12 @@ const Layout = () => {
             <div className="fixed bottom-[-10%] left-[20%] w-[20%] h-[20%] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none"></div>
 
             <Sidebar />
+
+            {/* Top Bar with Notification Bell */}
+            <div className="fixed top-4 right-4 md:right-8 z-50 flex items-center gap-3">
+                <NotificationBell />
+            </div>
+
             <main className="flex-1 lg:ml-72 p-4 md:p-10 pt-24 lg:pt-10 transition-all duration-300 relative z-10">
                 <div className="max-w-7xl mx-auto min-h-full">
                     <Outlet />

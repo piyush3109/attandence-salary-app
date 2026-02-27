@@ -10,4 +10,6 @@ export default defineConfig({
     build: {
         target: 'es2020',
     },
+    // Copy service worker and manifest to dist
+    publicDir: 'public',
 })

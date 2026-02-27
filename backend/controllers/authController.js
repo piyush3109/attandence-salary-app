@@ -240,6 +240,16 @@ const registerUser = async (req, res) => {
                 console.warn('Greeting email failed (non-blocking):', err.message);
             });
 
+            // Emit new employee notification
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('employee_joined', {
+                    name: employee.name,
+                    employeeId: employee.employeeId,
+                    position: employee.position,
+                });
+            }
+
             res.status(201).json({
                 _id: employee._id,
                 username: employee.name,

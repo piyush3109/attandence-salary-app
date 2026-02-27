@@ -18,6 +18,17 @@ const applyLeave = async (req, res) => {
             reason
         });
 
+        // Emit real-time notification for leave application
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('notification', {
+                type: 'leave',
+                title: '🏖️ New Leave Request',
+                message: `${req.user.name || 'An employee'} applied for ${type} leave from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`,
+                priority: 'medium',
+            });
+        }
+
         res.status(201).json(leave);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -76,6 +87,17 @@ const updateLeaveStatus = async (req, res) => {
             } catch (err) {
                 console.error("Failed to send leave notification email:", err);
             }
+        }
+
+        // Emit real-time notification for leave status update
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('leave_update', {
+                employeeId: leave.employee._id,
+                status,
+                message: `Your ${leave.type} leave request has been ${status.toLowerCase()}`,
+                priority: status === 'Approved' ? 'low' : 'high',
+            });
         }
 
         res.json(leave);
