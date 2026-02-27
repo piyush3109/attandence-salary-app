@@ -1,4 +1,4 @@
-# 🚛 Employ Management App: Workforce & Payroll Engine
+# 🧑‍💼 Employ Management App: Workforce & Payroll Engine
 
 <div align="center">
   <img src="https://img.shields.io/badge/Version-2.5.0-blue?style=for-the-badge" alt="Version">
