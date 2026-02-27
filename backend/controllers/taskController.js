@@ -16,6 +16,20 @@ const createTask = async (req, res) => {
             dueDate,
             orgId
         });
+
+        // Emit real-time updates
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('task_update', { message: 'New task assigned' });
+            io.emit('notification', {
+                receiverId: assignedTo,
+                title: '📋 New Task Assigned',
+                message: `You have been assigned a new task: ${title}`,
+                type: 'task',
+                priority: 'normal'
+            });
+        }
+
         res.status(201).json(task);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -61,6 +75,12 @@ const updateTaskStatus = async (req, res) => {
 
         task.status = status;
         await task.save();
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('task_update', { message: 'Task status updated' });
+        }
+
         res.json(task);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -74,6 +94,10 @@ const deleteTask = async (req, res) => {
         const orgId = req.user.orgId || 'default';
         const task = await Task.findOneAndDelete({ _id: req.params.id, orgId });
         if (!task) return res.status(404).json({ message: 'Task not found' });
+
+        const io = req.app.get('io');
+        if (io) io.emit('task_update', { message: 'Task deleted' });
+
         res.json({ message: 'Task removed' });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -99,6 +123,10 @@ const startTaskTimer = async (req, res) => {
         task.timeEntries.push({ startTime: new Date() });
         task.status = 'in-progress';
         await task.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('task_update', { message: 'Task timer started' });
+
         res.json(task);
 
     } catch (error) {
@@ -127,6 +155,10 @@ const stopTaskTimer = async (req, res) => {
         task.timeLogged += openEntry.duration;
 
         await task.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('task_update', { message: 'Task timer stopped' });
+
         res.json(task);
 
     } catch (error) {

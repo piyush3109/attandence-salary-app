@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
+import { getSocket } from '../utils/socket';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
     Calendar as CalendarIcon,
@@ -58,6 +59,20 @@ const Attendance = () => {
         if (viewMode === 'calendar') {
             fetchCalendarData();
         }
+
+        const socket = getSocket();
+        if (socket) {
+            socket.on('attendance_update', () => {
+                fetchEmployeesAndAttendance();
+                if (viewMode === 'calendar') {
+                    fetchCalendarData();
+                }
+            });
+        }
+
+        return () => {
+            if (socket) socket.off('attendance_update');
+        };
     }, [date, viewMode, selectedEmployee, calendarDate]);
 
     // Firestore logic remains...

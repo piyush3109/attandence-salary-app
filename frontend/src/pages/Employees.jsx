@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { getSocket } from '../utils/socket';
 import {
     Plus,
     Search,
@@ -52,6 +53,17 @@ const Employees = () => {
 
     useEffect(() => {
         fetchEmployees();
+
+        const socket = getSocket();
+        if (socket) {
+            socket.on('employee_joined', () => {
+                fetchEmployees();
+            });
+        }
+
+        return () => {
+            if (socket) socket.off('employee_joined');
+        };
     }, [searchTerm]);
 
     const handleSubmit = async (e) => {

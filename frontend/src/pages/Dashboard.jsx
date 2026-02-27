@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { getSocket } from '../utils/socket';
 import {
     Users,
     UserCheck,
@@ -70,6 +71,23 @@ const Dashboard = () => {
             }
         };
         fetchStats();
+
+        const socket = getSocket();
+        if (socket) {
+            socket.on('attendance_update', fetchStats);
+            socket.on('employee_joined', fetchStats);
+            socket.on('task_update', fetchStats);
+            socket.on('salary_update', fetchStats);
+        }
+
+        return () => {
+            if (socket) {
+                socket.off('attendance_update', fetchStats);
+                socket.off('employee_joined', fetchStats);
+                socket.off('task_update', fetchStats);
+                socket.off('salary_update', fetchStats);
+            }
+        };
     }, []);
 
     if (!stats) return <div className="flex items-center justify-center min-h-[400px]">

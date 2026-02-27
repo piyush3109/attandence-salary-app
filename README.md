@@ -101,6 +101,13 @@ npm start
 npm run dev
 ```
 
+### 4. Android APK Building (Web to APK)
+This application uses **CapacitorJS** by Ionic to turn the web app into a native Android app without rewriting the UI.
+1. Install Android Studio and Java JDK.
+2. Build the production React App: `cd frontend && npm run build`
+3. Sync Capacitor with the latest build: `npx @capacitor/cli sync android`
+4. Use GitHub Actions (we have configured `build-apk.yml`) to automatically compile the `.apk` on every new release or tag push without manual compilation!
+
 ---
 
 ## 📖 How To Use

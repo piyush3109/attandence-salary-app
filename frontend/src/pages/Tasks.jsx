@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { getSocket } from '../utils/socket';
 import {
     Briefcase,
     Plus,
@@ -44,6 +45,17 @@ const Tasks = () => {
     useEffect(() => {
         fetchTasks();
         if (isAdmin) fetchEmployees();
+
+        const socket = getSocket();
+        if (socket) {
+            socket.on('task_update', () => {
+                fetchTasks();
+            });
+        }
+
+        return () => {
+            if (socket) socket.off('task_update');
+        };
     }, [user]);
 
     const fetchTasks = async () => {
