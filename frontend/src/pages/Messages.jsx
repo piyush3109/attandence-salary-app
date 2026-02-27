@@ -16,7 +16,9 @@ import {
     X,
     Download,
     Film,
-    Loader2
+    Loader2,
+    Pencil,
+    Trash2
 } from 'lucide-react';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -122,7 +124,21 @@ const FilePreview = ({ file, onRemove }) => (
 );
 
 // ─── Message Bubble Component ───────────────────────────
-const MessageBubble = React.memo(({ msg, isMe }) => {
+const MessageBubble = React.memo(({ msg, isMe, onEdit, onDelete }) => {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClick = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+        };
+        if (showMenu) document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showMenu]);
+
+    const canEdit = isMe && msg.messageType === 'text' &&
+        ((Date.now() - new Date(msg.createdAt).getTime()) / (1000 * 60)) < 15;
+
     const renderContent = () => {
         switch (msg.messageType) {
             case 'image':
@@ -165,17 +181,40 @@ const MessageBubble = React.memo(({ msg, isMe }) => {
     };
 
     return (
-        <div className={cn("max-w-[80%] md:max-w-[65%] flex flex-col", isMe ? "self-end items-end" : "self-start items-start")}>
-            <div className={cn(
-                "px-5 py-3.5 rounded-[1.5rem] text-sm font-bold shadow-lg shadow-primary-500/5",
-                isMe
-                    ? "bg-primary-600 text-white rounded-tr-sm"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm border border-gray-200 dark:border-gray-700"
-            )}>
-                {renderContent()}
+        <div className={cn("max-w-[80%] md:max-w-[65%] flex flex-col group relative", isMe ? "self-end items-end" : "self-start items-start")}>
+            <div className="relative">
+                {isMe && (
+                    <div className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10" ref={menuRef}>
+                        <button onClick={() => setShowMenu(!showMenu)}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all">
+                            <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-full top-0 mr-1 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[120px] z-50">
+                                {canEdit && (
+                                    <button onClick={() => { setShowMenu(false); onEdit?.(msg); }}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 transition-colors">
+                                        <Pencil className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                )}
+                                <button onClick={() => { setShowMenu(false); onDelete?.(msg); }}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className={cn(
+                    "px-5 py-3.5 rounded-[1.5rem] text-sm font-bold shadow-lg shadow-primary-500/5",
+                    isMe ? "bg-primary-600 text-white rounded-tr-sm" : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm border border-gray-200 dark:border-gray-700"
+                )}>
+                    {renderContent()}
+                </div>
             </div>
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1.5 px-3">
                 {format(new Date(msg.createdAt), 'hh:mm a')} · {format(new Date(msg.createdAt), 'dd MMM')}
+                {msg.isEdited && <span className="ml-1 text-gray-500 italic normal-case">(edited)</span>}
             </span>
         </div>
     );
@@ -200,6 +239,8 @@ const Messages = () => {
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [sending, setSending] = useState(false);
+    const [editingMessage, setEditingMessage] = useState(null);
+    const [editContent, setEditContent] = useState('');
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -241,12 +282,24 @@ const Messages = () => {
             setTypingUser(null);
         });
 
+        socket.on('message_edited', (data) => {
+            setMessages(prev => prev.map(m =>
+                m._id === data.messageId ? { ...m, content: data.content, isEdited: true } : m
+            ));
+        });
+
+        socket.on('message_deleted', (data) => {
+            setMessages(prev => prev.filter(m => m._id !== data.messageId));
+        });
+
         return () => {
             socket.off('new_message');
             socket.off('online_users');
             socket.off('conversation_update');
             socket.off('user_typing');
             socket.off('user_stop_typing');
+            socket.off('message_edited');
+            socket.off('message_deleted');
         };
     }, [user?._id, scrollToBottom]);
 
@@ -391,6 +444,43 @@ const Messages = () => {
         if (file) {
             if (file.size > 25 * 1024 * 1024) { toast.error('File must be under 25MB'); return; }
             setSelectedFile(file);
+        }
+    };
+
+    // ─── Edit Message ───────────────────────────────────
+    const handleStartEdit = (msg) => {
+        setEditingMessage(msg);
+        setEditContent(msg.content);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingMessage || !editContent.trim()) return;
+        try {
+            const { data } = await api.put(`/messages/${editingMessage._id}`, { content: editContent.trim() });
+            setMessages(prev => prev.map(m => m._id === data._id ? data : m));
+            toast.success('Message edited');
+            setEditingMessage(null);
+            setEditContent('');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to edit message');
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingMessage(null);
+        setEditContent('');
+    };
+
+    // ─── Delete Message ─────────────────────────────────
+    const handleDeleteMessage = async (msg) => {
+        if (!window.confirm('Delete this message?')) return;
+        try {
+            await api.delete(`/messages/${msg._id}`);
+            setMessages(prev => prev.filter(m => m._id !== msg._id));
+            toast.success('Message deleted');
+            fetchConversations();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete message');
         }
     };
 
@@ -563,10 +653,37 @@ const Messages = () => {
                                 }
                                 const msg = item.data;
                                 const isMe = msg.sender.id === user?._id;
-                                return <MessageBubble key={msg._id} msg={msg} isMe={isMe} />;
+                                return <MessageBubble key={msg._id} msg={msg} isMe={isMe} onEdit={handleStartEdit} onDelete={handleDeleteMessage} />;
                             })}
                             <div ref={messagesEndRef} />
                         </div>
+
+                        {/* Edit Message Bar */}
+                        {editingMessage && (
+                            <div className="px-4 py-3 border-t border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 flex items-center gap-3">
+                                <Pencil className="w-4 h-4 text-primary-500 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">Editing Message</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <input
+                                            value={editContent}
+                                            onChange={(e) => setEditContent(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') handleCancelEdit(); }}
+                                            className="flex-1 bg-white dark:bg-gray-800 px-3 py-2 rounded-xl text-sm font-bold border border-primary-200 dark:border-primary-700 focus:ring-2 focus:ring-primary-500 outline-none dark:text-white"
+                                            autoFocus
+                                        />
+                                        <button onClick={handleSaveEdit}
+                                            className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-black hover:bg-primary-500 transition-colors">
+                                            Save
+                                        </button>
+                                        <button onClick={handleCancelEdit}
+                                            className="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Input Area */}
                         <div className="p-3 md:p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">

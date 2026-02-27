@@ -47,8 +47,8 @@ const AdminAnalytics = () => {
                     <h4 className="text-sm font-bold text-gray-500 mb-6 flex items-center gap-2 uppercase tracking-wider">
                         <TrendingUp className="w-4 h-4" /> 7-Day Attendance Trend
                     </h4>
-                    <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[250px] w-full" style={{ minWidth: '0', minHeight: '200px' }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <AreaChart data={data.trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
@@ -74,8 +74,8 @@ const AdminAnalytics = () => {
                     <h4 className="text-sm font-bold text-gray-500 mb-6 flex items-center gap-2 uppercase tracking-wider">
                         <Target className="w-4 h-4" /> Department Productivity
                     </h4>
-                    <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[250px] w-full" style={{ minWidth: '0', minHeight: '200px' }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <BarChart data={data.productivityData} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#374151" opacity={0.1} />
                                 <XAxis type="number" domain={[0, 100]} hide />
@@ -96,8 +96,8 @@ const AdminAnalytics = () => {
                     <h4 className="text-sm font-bold text-gray-500 mb-6 flex items-center gap-2 uppercase tracking-wider">
                         <Users className="w-4 h-4" /> Salary Expense Distribution
                     </h4>
-                    <div className="h-[300px] w-full flex flex-col md:flex-row items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[300px] w-full flex flex-col md:flex-row items-center justify-center" style={{ minWidth: '0', minHeight: '250px' }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={250}>
                             <PieChart>
                                 <Pie
                                     data={data.salaryExpenseData}

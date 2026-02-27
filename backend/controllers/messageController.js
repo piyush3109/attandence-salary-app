@@ -268,4 +268,85 @@ const getConversations = async (req, res) => {
     }
 };
 
-module.exports = { sendMessage, sendMessageWithFile, uploadProfilePhoto, getMessages, getConversations, upload };
+// @desc    Edit a message (only sender can edit, within 15 min)
+// @route   PUT /api/messages/:messageId
+const editMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const { content } = req.body;
+
+        if (!content || !content.trim()) {
+            return res.status(400).json({ message: 'Message content cannot be empty' });
+        }
+
+        const message = await Message.findById(messageId);
+        if (!message) return res.status(404).json({ message: 'Message not found' });
+
+        // Only sender can edit
+        if (message.sender.id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'You can only edit your own messages' });
+        }
+
+        // Only text messages can be edited
+        if (message.messageType !== 'text') {
+            return res.status(400).json({ message: 'Only text messages can be edited' });
+        }
+
+        // 15 minute edit window
+        const minutesSinceCreated = (Date.now() - new Date(message.createdAt).getTime()) / (1000 * 60);
+        if (minutesSinceCreated > 15) {
+            return res.status(400).json({ message: 'Messages can only be edited within 15 minutes' });
+        }
+
+        message.content = content.trim();
+        message.isEdited = true;
+        await message.save();
+
+        // Emit edit event via socket
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('message_edited', {
+                messageId: message._id,
+                conversationId: message.conversationId,
+                content: message.content,
+            });
+        }
+
+        res.json(message);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// @desc    Delete a message (only sender can delete)
+// @route   DELETE /api/messages/:messageId
+const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+
+        const message = await Message.findById(messageId);
+        if (!message) return res.status(404).json({ message: 'Message not found' });
+
+        // Only sender can delete
+        if (message.sender.id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'You can only delete your own messages' });
+        }
+
+        await Message.findByIdAndDelete(messageId);
+
+        // Emit delete event via socket
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('message_deleted', {
+                messageId: message._id,
+                conversationId: message.conversationId,
+            });
+        }
+
+        res.json({ message: 'Message deleted' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = { sendMessage, sendMessageWithFile, uploadProfilePhoto, getMessages, getConversations, editMessage, deleteMessage, upload };
