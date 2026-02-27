@@ -55,7 +55,7 @@ const VoiceAssistant = () => {
             toast.success('👥 Opening Employees');
         } else if (cmd.includes('ops') || cmd.includes('operations') || cmd.includes('strategic')) {
             navigate('/ops');
-            toast.success('⚡ Navigating to Strategic Ops');
+            toast.success('⚡ Navigating to Operations Center');
         } else if (cmd.includes('salary') || cmd.includes('pay')) {
             navigate('/salary');
             toast.success('💰 Opening Salary Hub');
@@ -178,8 +178,8 @@ const VoiceAssistant = () => {
         <button
             onClick={isListening ? stopListening : startListening}
             className={`fixed bottom-8 right-8 z-50 p-4 rounded-full shadow-2xl transition-all duration-500 active:scale-90 group ${isListening
-                    ? 'bg-rose-500 animate-pulse shadow-rose-500/40 scale-110'
-                    : 'bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-500/30 hover:shadow-primary-500/50 hover:scale-105'
+                ? 'bg-rose-500 animate-pulse shadow-rose-500/40 scale-110'
+                : 'bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-500/30 hover:shadow-primary-500/50 hover:scale-105'
                 }`}
             title={isListening ? 'Stop listening' : 'Voice Control - Say a command'}
         >

@@ -40,6 +40,8 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        env:
+          VITE_API_URL: https://attandence-salary-app-web-service.onrender.com/api
         run: npm run build
 
       - name: Sync Capacitor

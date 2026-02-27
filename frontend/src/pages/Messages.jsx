@@ -193,10 +193,10 @@ const MessageBubble = React.memo(({ msg, isMe, onEdit, onDelete }) => {
         <div className={cn("max-w-[80%] md:max-w-[65%] flex flex-col group relative", isMe ? "self-end items-end" : "self-start items-start")}>
             <div className="relative">
                 {isMe && (
-                    <div className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10" ref={menuRef}>
+                    <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10" ref={menuRef}>
                         <button onClick={() => setShowMenu(!showMenu)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all">
-                            <MoreVertical className="w-4 h-4" />
+                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all">
+                            <MoreVertical className="w-5 h-5" />
                         </button>
                         {showMenu && (
                             <div className="absolute right-full top-0 mr-1 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-[120px] z-50">

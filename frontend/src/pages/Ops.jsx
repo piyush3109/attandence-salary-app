@@ -98,7 +98,7 @@ const Ops = () => {
             {/* Header Section */}
             <div className="flex flex-col gap-6">
                 <div className="px-2">
-                    <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Strategic Ops</h1>
+                    <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Operations Center</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm md:text-lg">Unified Command for Force & Compliance.</p>
                 </div>
 
@@ -347,7 +347,7 @@ const Ops = () => {
                                         <Shield className="w-8 h-8" />
                                     </div>
                                     <div>
-                                        <h3 className="text-2xl font-black dark:text-white uppercase tracking-tight">Governance Vault</h3>
+                                        <h3 className="text-2xl font-black dark:text-white uppercase tracking-tight">Compliance & Statutory</h3>
                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mt-1">PF, ESI & Statutory filings</p>
                                     </div>
                                 </div>

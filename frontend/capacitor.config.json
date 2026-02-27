@@ -1,6 +1,6 @@
 {
   "appId": "com.employmanagement.app",
-  "appName": "Employ Management",
+  "appName": "Employ Management App",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
