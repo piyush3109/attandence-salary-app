@@ -86,7 +86,7 @@ jobs:
             - ✅ In-app Messaging
             
             ### Installation
-            1. Download `transport-corporation-app.apk`
+            1. Download `employ-management-app.apk`
             2. Enable "Install from Unknown Sources" in your phone settings
             3. Open the APK file to install
           draft: false
