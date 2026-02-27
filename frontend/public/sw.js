@@ -1,16 +1,23 @@
-const CACHE_NAME = 'transport-corp-v1';
+const CACHE_NAME = 'transport-corp-v2';
+const MAX_CACHE_SIZE = 30; // Maximum number of items in cache
+
+// Only cache essential static assets during install
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
 ];
 
-// Install event - cache static assets
+// Install event - cache only critical static assets
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(STATIC_ASSETS))
             .then(() => self.skipWaiting())
+            .catch((err) => {
+                console.warn('SW install cache failed:', err);
+                return self.skipWaiting();
+            })
     );
 });
 
@@ -27,7 +34,18 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - network first, fallback to cache
+// Helper: Trim cache to prevent quota exceeded
+const trimCache = async (cacheName, maxItems) => {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length > maxItems) {
+        // Delete oldest entries first
+        const toDelete = keys.slice(0, keys.length - maxItems);
+        await Promise.all(toDelete.map((key) => cache.delete(key)));
+    }
+};
+
+// Fetch event - network first, selective caching
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
@@ -38,14 +56,36 @@ self.addEventListener('fetch', (event) => {
     // Skip socket.io requests
     if (event.request.url.includes('/socket.io/')) return;
 
+    // Skip large media files, uploads, and external URLs
+    if (event.request.url.includes('/uploads/')) return;
+    if (event.request.url.includes('giphy.com')) return;
+    if (event.request.url.includes('googleapis.com')) return;
+    if (event.request.url.includes('firebase')) return;
+    if (event.request.url.includes('dicebear.com')) return;
+
+    // Skip chrome-extension and non-http requests
+    if (!event.request.url.startsWith('http')) return;
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Clone the response before caching
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseClone);
-                });
+                // Only cache successful responses that are reasonable size
+                if (response.ok && response.status === 200) {
+                    const contentLength = response.headers.get('content-length');
+                    const size = contentLength ? parseInt(contentLength) : 0;
+
+                    // Don't cache responses larger than 2MB
+                    if (size < 2 * 1024 * 1024) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone).catch(() => {
+                                // Silently fail if quota is exceeded
+                            });
+                            // Trim cache to prevent buildup
+                            trimCache(CACHE_NAME, MAX_CACHE_SIZE);
+                        });
+                    }
+                }
                 return response;
             })
             .catch(() => {
@@ -100,13 +140,11 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
-                // Focus existing window if available
                 for (const client of clientList) {
                     if (client.url.includes(self.location.origin) && 'focus' in client) {
                         return client.focus();
                     }
                 }
-                // Open new window
                 return clients.openWindow('/');
             })
     );
