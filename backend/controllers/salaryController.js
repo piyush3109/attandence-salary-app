@@ -184,6 +184,8 @@ const getSalarySlip = async (req, res) => {
         const totalDeductions = totalAdvance + manualFine;
 
         const slipData = [{
+            _id: emp._id,
+            employeeId: emp.employeeId,
             name: emp.name,
             position: emp.position,
             rate: emp.salaryRate,

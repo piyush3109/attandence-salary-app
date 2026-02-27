@@ -107,13 +107,8 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // If email is provided, require OTP verification
-        if (formData.email) {
-            await handleSendOTP();
-        } else {
-            // No email, register directly
-            await handleRegister();
-        }
+        // No email OTP verification required anymore as requested
+        await handleRegister();
     };
 
     const handleResendOTP = async () => {

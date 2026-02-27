@@ -5,7 +5,7 @@ const { protect, checkRole } = require('../middleware/authMiddleware');
 
 router.post('/', protect, checkRole(['employee']), applyLeave);
 router.get('/my', protect, checkRole(['employee', 'manager']), getMyLeaves);
-router.get('/', protect, checkRole(['admin', 'ceo', 'manager', 'hr']), getAllLeaves);
+router.get('/', protect, checkRole(['admin', 'ceo', 'manager', 'hr', 'employee']), getAllLeaves);
 router.put('/:id/status', protect, checkRole(['admin', 'ceo', 'manager', 'hr']), updateLeaveStatus);
 
 module.exports = router;

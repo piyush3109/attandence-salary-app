@@ -36,8 +36,12 @@ const AttendanceCalendar = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (user?.role !== 'employee') {
-            fetchEmployees();
+        if (user) {
+            if (user.role !== 'employee' && user.isEmployee !== true) {
+                fetchEmployees();
+            } else {
+                setSelectedEmployee(user._id);
+            }
         }
     }, [user]);
 
