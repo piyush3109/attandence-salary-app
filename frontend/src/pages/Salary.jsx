@@ -11,6 +11,26 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
+const downloadBlob = async (response, fallbackName) => {
+    const mimeType = response.headers?.['content-type'] || response.data?.type || '';
+    if (mimeType.includes('application/json')) {
+        const errText = await response.data.text();
+        const errJson = JSON.parse(errText || '{}');
+        throw new Error(errJson.message || 'Download failed');
+    }
+
+    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fallbackName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+};
+
+
 const Salary = () => {
     const today = new Date();
     const [month, setMonth] = useState(today.getMonth() + 1);
@@ -42,15 +62,9 @@ const Salary = () => {
             const response = await api.get(`/salary/report?month=${month}&year=${year}&format=${format}`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Salary_Report_${month}_${year}.${format}`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await downloadBlob(response, `Salary_Report_${month}_${year}.${format}`);
         } catch (error) {
-            toast.error('Export failed');
+            toast.error(error.message || 'Export failed');
         }
     };
 
@@ -72,16 +86,10 @@ const Salary = () => {
             const response = await api.get(`/salary/slip/${employeeId}?month=${month}&year=${year}${extraQuery}`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `SalarySlip_${employeeName}_${month}_${year}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await downloadBlob(response, `SalarySlip_${employeeName}_${month}_${year}.pdf`);
             if (editingAdjustment) setEditingAdjustment(null);
         } catch (error) {
-            toast.error('Failed to download salary slip');
+            toast.error(error.message || 'Failed to download salary slip');
         }
     };
 
