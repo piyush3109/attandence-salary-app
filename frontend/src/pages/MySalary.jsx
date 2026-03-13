@@ -18,6 +18,26 @@ import {
 import { format, subMonths, addMonths } from 'date-fns';
 import { toast } from 'react-toastify';
 
+const downloadBlob = async (response, fallbackName) => {
+    const mimeType = response.headers?.['content-type'] || response.data?.type || '';
+    if (mimeType.includes('application/json')) {
+        const errText = await response.data.text();
+        const errJson = JSON.parse(errText || '{}');
+        throw new Error(errJson.message || 'Download failed');
+    }
+
+    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fallbackName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+};
+
+
 const MySalary = () => {
     const { user } = useAuth();
     const [date, setDate] = useState(new Date());
@@ -50,15 +70,9 @@ const MySalary = () => {
             const response = await api.get(`/salary/slip/${user._id}?month=${month}&year=${year}`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `SalarySlip_${format(date, 'MMM_yyyy')}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await downloadBlob(response, `SalarySlip_${format(date, 'MMM_yyyy')}.pdf`);
         } catch (error) {
-            toast.error('Failed to download salary slip');
+            toast.error(error.message || 'Failed to download salary slip');
         }
     };
 

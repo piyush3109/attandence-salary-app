@@ -74,7 +74,7 @@ const Sidebar = () => {
         { name: 'Attendance', icon: CalendarCheck, path: '/attendance', roles: ['admin', 'ceo', 'manager'] },
         { name: 'Calendar View', icon: Calendar, path: '/calendar', roles: ['admin', 'ceo', 'manager'] },
         { name: 'Leaves', icon: ClipboardList, path: '/leaves', roles: ['admin', 'ceo', 'manager', 'employee', 'hr'] },
-        { name: 'Operations Center', icon: Activity, path: '/ops', roles: ['admin', 'ceo', 'manager', 'employee'] },
+        { name: 'Operations Center', icon: Activity, path: '/ops', roles: ['admin', 'ceo', 'manager'] },
         { name: 'Salary', icon: IndianRupee, path: '/salary', roles: ['admin', 'ceo', 'accountant'] },
         { name: 'Advance', icon: CreditCard, path: '/advance', roles: ['admin', 'ceo', 'accountant'] },
         // Employee Specific Routes
