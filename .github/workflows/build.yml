@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     name: Build Android APK
@@ -39,7 +42,7 @@ jobs:
       - name: Android Build
         run: |
           cd frontend
-          npx cap sync
+          npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
@@ -123,3 +126,34 @@ jobs:
         run: |
           cd frontend/ios/App
           xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Debug CODE_SIGNING_ALLOWED=NO | xcpretty
+
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release_files
+          find artifacts -type f -name "*.apk" -exec cp {} release_files/ \;
+          find artifacts -type f -name "*.exe" -exec cp {} release_files/ \;
+          find artifacts -type f -name "*.dmg" -exec cp {} release_files/ \;
+          find artifacts -type f -name "*.zip" -exec cp {} release_files/ \;
+          echo "Release Files:"
+          ls -R release_files
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "Build v${{ github.run_number }} - $(date +'%Y-%m-%d %H:%M')"
+          files: release_files/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
