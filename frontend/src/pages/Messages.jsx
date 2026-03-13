@@ -516,18 +516,34 @@ const Messages = () => {
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream);
+
+            // Determine best supported mime type for recording
+            const mimeTypes = [
+                'audio/webm;codecs=opus',
+                'audio/mp4;codecs=mp4a.40.2',
+                'audio/ogg;codecs=opus',
+                'audio/wav'
+            ];
+            const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+
+            mediaRecorderRef.current = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
 
             mediaRecorderRef.current.ondataavailable = (e) => {
                 if (e.data.size > 0) audioChunksRef.current.push(e.data);
             };
 
             mediaRecorderRef.current.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const supportedMimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+                const audioBlob = new Blob(audioChunksRef.current, { type: supportedMimeType });
                 audioChunksRef.current = [];
 
+                // Extension based on mimetype
+                let extension = 'webm';
+                if (supportedMimeType.includes('mp4')) extension = 'mp4';
+                else if (supportedMimeType.includes('ogg')) extension = 'ogg';
+
                 // Construct a file to send
-                const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+                const audioFile = new File([audioBlob], `voice-message-${Date.now()}.${extension}`, { type: supportedMimeType });
 
                 // Re-use logic for sending file
                 setSending(true);
@@ -628,7 +644,7 @@ const Messages = () => {
     }, [messages]);
 
     return (
-        <div className="h-[calc(100vh-100px)] md:h-[calc(100vh-180px)] flex flex-col md:flex-row gap-3 md:gap-6">
+        <div className="h-[calc(100dvh-100px)] md:h-[calc(100vh-180px)] flex flex-col md:flex-row gap-3 md:gap-6">
             {/* ─── Conversation List ─────────────────────── */}
             <div className={cn(
                 "w-full md:w-80 xl:w-96 flex flex-col bg-white dark:bg-gray-900 rounded-2xl md:rounded-[2.5rem] border border-gray-100 dark:border-gray-800 overflow-hidden shadow-2xl shadow-primary-500/5",
