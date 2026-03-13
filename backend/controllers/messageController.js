@@ -32,12 +32,12 @@ const fileFilter = (req, file, cb) => {
         'application/zip', 'application/x-rar-compressed',
         'text/plain', 'text/csv',
         'video/mp4', 'video/webm',
-        'audio/mpeg', 'audio/wav'
+        'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/mp4'
     ];
-    if (allowedTypes.includes(file.mimetype)) {
+    if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
         cb(null, true);
     } else {
-        cb(new Error('File type not supported'), false);
+        cb(new Error(`File type ${file.mimetype} not supported`), false);
     }
 };
 
@@ -291,11 +291,6 @@ const editMessage = async (req, res) => {
             return res.status(403).json({ message: 'You can only edit your own messages' });
         }
 
-        // Only text messages can be edited
-        if (message.messageType !== 'text') {
-            return res.status(400).json({ message: 'Only text messages can be edited' });
-        }
-
         // 15 minute edit window
         const minutesSinceCreated = (Date.now() - new Date(message.createdAt).getTime()) / (1000 * 60);
         if (minutesSinceCreated > 15) {
@@ -306,10 +301,10 @@ const editMessage = async (req, res) => {
         message.isEdited = true;
         await message.save();
 
-        // Emit edit event via socket
+        // Emit edit event via socket to the conversation room
         const io = req.app.get('io');
         if (io) {
-            io.emit('message_edited', {
+            io.to(message.conversationId).emit('message_edited', {
                 messageId: message._id,
                 conversationId: message.conversationId,
                 content: message.content,
@@ -338,10 +333,10 @@ const deleteMessage = async (req, res) => {
 
         await Message.findByIdAndDelete(messageId);
 
-        // Emit delete event via socket
+        // Emit delete event via socket to the conversation room
         const io = req.app.get('io');
         if (io) {
-            io.emit('message_deleted', {
+            io.to(message.conversationId).emit('message_deleted', {
                 messageId: message._id,
                 conversationId: message.conversationId,
             });
