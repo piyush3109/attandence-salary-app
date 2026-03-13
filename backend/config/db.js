@@ -5,14 +5,25 @@ const connectDB = async () => {
 
     const tryConnect = async (url) => {
         try {
+            // Mask the URL for logging
+            const maskedUrl = url.replace(/\/\/.*:.*@/, '//<user>:<password>@');
+            console.log(`Attempting to connect to: ${maskedUrl}`);
+
             const conn = await mongoose.connect(url, {
                 serverSelectionTimeoutMS: 5000,
-                autoIndex: true
+                autoIndex: true,
+                // Default to a specific DB name if not in URI string
+                dbName: url.includes('/?') || url.endsWith('.net/') || url.endsWith('.net') ? 'attendance_salary_db' : undefined
             });
-            console.log(`MongoDB Connected: ${conn.connection.host}`);
+            console.log(`✅ MongoDB Connected: ${conn.connection.host} (Database: ${conn.connection.name})`);
             return true;
         } catch (error) {
-            console.error(`Connection failed to ${url}: ${error.message}`);
+            console.error(`❌ MongoDB Connection Error: ${error.message}`);
+            if (error.message.includes('authentication failed')) {
+                console.error('👉 TIP: Check your database username and password in backend/.env');
+            } else if (error.message.includes('IP not whitelisted')) {
+                console.error('👉 TIP: Ensure your IP address is whitelisted in MongoDB Atlas Network Access');
+            }
             return false;
         }
     };
