@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import api from '../../utils/api';
+import { motion } from 'framer-motion';
 
 const cn = (...inputs) => twMerge(clsx(inputs));
 
@@ -68,6 +69,7 @@ const Sidebar = () => {
         { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['admin', 'ceo', 'manager', 'accountant'] },
         { name: 'Employees', icon: Users, path: '/employees', roles: ['admin', 'ceo', 'manager'] },
         { name: 'Work Hub', icon: Briefcase, path: '/tasks', roles: ['admin', 'ceo', 'manager', 'employee'] },
+        { name: 'Squads', icon: Shield, path: '/groups', roles: ['admin', 'ceo', 'manager', 'employee'] },
         { name: 'Messages', icon: MessageSquare, path: '/messages', roles: ['admin', 'ceo', 'manager', 'employee'] },
         { name: 'Attendance', icon: CalendarCheck, path: '/attendance', roles: ['admin', 'ceo', 'manager'] },
         { name: 'Calendar View', icon: Calendar, path: '/calendar', roles: ['admin', 'ceo', 'manager'] },
@@ -124,24 +126,30 @@ const Sidebar = () => {
 
                     <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide">
                         <div className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] px-4 mb-4 mt-2">Main Menu</div>
-                        {navItems.map((item) => (
-                            <NavLink
+                        {navItems.map((item, idx) => (
+                            <motion.div
                                 key={item.name}
-                                to={item.path}
-                                onClick={() => setIsOpen(false)}
-                                className={({ isActive }) => cn(
-                                    "flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-300 group",
-                                    isActive
-                                        ? "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm"
-                                        : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 hover:translate-x-1"
-                                )}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.05 }}
                             >
-                                <item.icon className={cn(
-                                    "w-5 h-5 transition-colors",
-                                    "group-hover:text-primary-500"
-                                )} />
-                                {item.name}
-                            </NavLink>
+                                <NavLink
+                                    to={item.path}
+                                    onClick={() => setIsOpen(false)}
+                                    className={({ isActive }) => cn(
+                                        "flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-300 group",
+                                        isActive
+                                            ? "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 hover:translate-x-1"
+                                    )}
+                                >
+                                    <item.icon className={cn(
+                                        "w-5 h-5 transition-colors",
+                                        "group-hover:text-primary-500"
+                                    )} />
+                                    {item.name}
+                                </NavLink>
+                            </motion.div>
                         ))}
                     </nav>
 

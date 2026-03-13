@@ -1,13 +1,15 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
+import { AnimatePresence } from 'framer-motion';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import InstallPrompt from './components/pwa/InstallPrompt';
+import PageTransition from './components/layout/PageTransition';
 
-// ─── Lazy Loaded Pages (code-splitting for fast initial load) ───
+// ─── Lazy Loaded Pages ───
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -24,6 +26,7 @@ const Messages = lazy(() => import('./pages/Messages'));
 const Developers = lazy(() => import('./pages/Developers'));
 const Leaves = lazy(() => import('./pages/Leaves'));
 const Ops = lazy(() => import('./pages/Ops'));
+const Groups = lazy(() => import('./pages/Groups'));
 
 // ─── Loading Spinner ────────────────────────────────────
 const PageLoader = () => (
@@ -34,40 +37,51 @@ const PageLoader = () => (
     </div>
 );
 
+const AnimatedRoutes = () => {
+    const location = useLocation();
+
+    return (
+        <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={<Layout />}>
+                    <Route index element={<PageTransition><Dashboard /></PageTransition>} />
+                    <Route path="employees" element={<PageTransition><Employees /></PageTransition>} />
+                    <Route path="tasks" element={<PageTransition><Tasks /></PageTransition>} />
+                    <Route path="messages" element={<PageTransition><Messages /></PageTransition>} />
+                    <Route path="groups" element={<PageTransition><Groups /></PageTransition>} />
+                    <Route path="attendance" element={<PageTransition><Attendance /></PageTransition>} />
+                    <Route path="calendar" element={<PageTransition><AttendanceCalendar /></PageTransition>} />
+                    <Route path="leaves" element={<PageTransition><Leaves /></PageTransition>} />
+                    <Route path="ops" element={<PageTransition><Ops /></PageTransition>} />
+                    <Route path="salary" element={<PageTransition><Salary /></PageTransition>} />
+                    <Route path="advance" element={<PageTransition><Advance /></PageTransition>} />
+                    <Route path="settings" element={<PageTransition><Settings /></PageTransition>} />
+                    <Route path="profile" element={<PageTransition><Profile /></PageTransition>} />
+                    <Route path="developers" element={<PageTransition><Developers /></PageTransition>} />
+
+                    {/* Employee specific routes */}
+                    <Route path="my-profile" element={<PageTransition><Profile /></PageTransition>} />
+                    <Route path="my-attendance" element={<PageTransition><AttendanceCalendar /></PageTransition>} />
+                    <Route path="my-salary" element={<PageTransition><MySalary /></PageTransition>} />
+                </Route>
+            </Routes>
+        </AnimatePresence>
+    );
+};
+
 function App() {
     return (
         <Router>
             <AuthProvider>
-                <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/" element={<Layout />}>
-                            <Route index element={<Dashboard />} />
-                            <Route path="employees" element={<Employees />} />
-                            <Route path="tasks" element={<Tasks />} />
-                            <Route path="messages" element={<Messages />} />
-                            <Route path="attendance" element={<Attendance />} />
-                            <Route path="calendar" element={<AttendanceCalendar />} />
-                            <Route path="leaves" element={<Leaves />} />
-                            <Route path="ops" element={<Ops />} />
-                            <Route path="salary" element={<Salary />} />
-                            <Route path="advance" element={<Advance />} />
-                            <Route path="settings" element={<Settings />} />
-                            <Route path="profile" element={<Profile />} />
-                            <Route path="developers" element={<Developers />} />
+                <div className="bg-gray-50 dark:bg-[#0b0f19] min-h-screen transition-colors duration-500">
+                    <Suspense fallback={<PageLoader />}>
+                        <AnimatedRoutes />
+                    </Suspense>
+                </div>
 
-                            {/* Employee specific routes */}
-                            <Route path="my-profile" element={<Profile />} />
-                            <Route path="my-attendance" element={<AttendanceCalendar />} />
-                            <Route path="my-salary" element={<MySalary />} />
-                        </Route>
-                    </Routes>
-                </Suspense>
-
-                {/* PWA Install Prompt */}
                 <InstallPrompt />
-
                 <ToastContainer position="bottom-right" theme="colored" autoClose={3000} limit={3} />
             </AuthProvider>
         </Router>

@@ -1,29 +1,48 @@
 const mongoose = require('mongoose');
 
+/**
+ * Connect to MongoDB Atlas or In-Memory fallback
+ * Improved for production environments (Vercel)
+ */
 const connectDB = async () => {
-    let dbUrl = process.env.MONGODB_URI;
+    const dbUrl = process.env.MONGODB_URI;
 
     const tryConnect = async (url) => {
         try {
-            // Mask the URL for logging
+            // Mask the URL for safe logging
             const maskedUrl = url.replace(/\/\/.*:.*@/, '//<user>:<password>@');
-            console.log(`Attempting to connect to: ${maskedUrl}`);
+            console.log(`📡 Connecting to: ${maskedUrl}`);
 
-            const conn = await mongoose.connect(url, {
-                serverSelectionTimeoutMS: 5000,
+            // Connection options
+            const options = {
+                serverSelectionTimeoutMS: 10000, // Reduced timeout for faster failure detection
                 autoIndex: true,
-                // Default to a specific DB name if not in URI string
-                dbName: url.includes('/?') || url.endsWith('.net/') || url.endsWith('.net') ? 'attendance_salary_db' : undefined
-            });
+            };
+
+            // Only set dbName if the URI doesn't clearly contain one
+            // URIs usually look like ...net/database_name?retries...
+            // If it's just ...net/ or ...net/?... then we provide a default
+            const hasDatabaseName = url.split('/').pop().split('?')[0].length > 0;
+            if (!hasDatabaseName) {
+                options.dbName = 'attendance_salary_db';
+            }
+
+            const conn = await mongoose.connect(url, options);
             console.log(`✅ MongoDB Connected: ${conn.connection.host} (Database: ${conn.connection.name})`);
             return true;
         } catch (error) {
             console.error(`❌ MongoDB Connection Error: ${error.message}`);
+
+            // Helpful tips for the user in logs
             if (error.message.includes('authentication failed')) {
-                console.error('👉 TIP: Check your database username and password in backend/.env');
+                console.error('👉 TIP: Check your database username and password in your environment variables.');
+                console.error('👉 TIP: Ensure special characters in password are URL encoded.');
             } else if (error.message.includes('IP not whitelisted')) {
-                console.error('👉 TIP: Ensure your IP address is whitelisted in MongoDB Atlas Network Access');
+                console.error('👉 TIP: Add 0.0.0.0/0 to your MongoDB Atlas Network Access for Vercel compatibility.');
+            } else if (error.message.includes('ECONNREFUSED')) {
+                console.error('👉 TIP: Check if your database host is correct and your internet connection is stable.');
             }
+
             return false;
         }
     };
@@ -33,21 +52,28 @@ const connectDB = async () => {
         connected = await tryConnect(dbUrl);
     }
 
-    // Only attempt In-Memory fallback in development if MONGODB_URI is missing or fails
-    if (!connected && process.env.NODE_ENV === 'development') {
-        try {
-            console.log('Falling back to In-Memory MongoDB...');
-            const { MongoMemoryServer } = require('mongodb-memory-server');
-            const mongod = await MongoMemoryServer.create();
-            dbUrl = mongod.getUri();
-            await tryConnect(dbUrl);
-        } catch (err) {
-            console.error('Failed to start MongoMemoryServer:', err.message);
-            process.exit(1);
+    // Handlers for connection failure
+    if (!connected) {
+        if (process.env.NODE_ENV === 'development') {
+            try {
+                console.log('⚠️ Atlas connection failed. Attempting In-Memory MongoDB for development...');
+                // Dynamically require to avoid production build issues
+                const { MongoMemoryServer } = require('mongodb-memory-server');
+                const mongod = await MongoMemoryServer.create();
+                const memUri = mongod.getUri();
+                await tryConnect(memUri);
+            } catch (err) {
+                console.error('CRITICAL: Failed to start MongoMemoryServer:', err.message);
+                // In dev, we can exit to notify the developer
+                process.exit(1);
+            }
+        } else {
+            // In production, we LOG the error but don't exit(1) immediately.
+            // This prevents "status 1" crashes on boot, allowing the developer to see logs.
+            // Routes will still fail gracefully when they try to use an unitialized connection.
+            console.error('🚨 CRITICAL: Persistent database connection failure.');
+            console.error('🚨 The app is starting WITHOUT a database connection. Check MONGODB_URI.');
         }
-    } else if (!connected) {
-        console.error('CRITICAL: Could not connect to MongoDB Atlas. Ensure MONGODB_URI is set.');
-        process.exit(1);
     }
 };
 

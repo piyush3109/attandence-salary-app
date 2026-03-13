@@ -137,6 +137,7 @@ app.use('/api/trainings', require('./routes/trainingRoutes'));
 app.use('/api/field', require('./routes/fieldRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
+app.use('/api/groups', require('./routes/groupRoutes'));
 
 const { loadPlugins } = require('./utils/pluginLoader');
 loadPlugins(app);
