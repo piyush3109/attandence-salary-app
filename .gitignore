@@ -6,3 +6,7 @@ build
 .firebase
 .vercel
 *.log
+release
+frontend/release
+dist
+build
