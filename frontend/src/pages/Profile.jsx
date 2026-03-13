@@ -11,6 +11,7 @@ import {
     MapPin,
     AlertCircle,
     Camera,
+    Image,
     Edit3,
     Save,
     X,
@@ -109,9 +110,11 @@ const Profile = () => {
     const [editData, setEditData] = useState({});
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [uploadingBackground, setUploadingBackground] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
 
     const photoInputRef = useRef(null);
+    const backgroundInputRef = useRef(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -126,7 +129,8 @@ const Profile = () => {
                         role: user.role,
                         position: 'System Administrator',
                         isAdmin: true,
-                        profilePhoto: user.profilePhoto
+                        profilePhoto: user.profilePhoto,
+                        profileBackground: user.profileBackground
                     });
                 }
             } catch (error) {
@@ -221,6 +225,37 @@ const Profile = () => {
         }
     };
 
+
+    const handleBackgroundUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingBackground(true);
+        try {
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('mediaType', 'background');
+
+            const { data } = await api.post('/messages/profile-photo', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const backgroundUrl = data.profileBackground;
+            setProfile(prev => ({ ...prev, profileBackground: backgroundUrl }));
+
+            const userInfo = JSON.parse(Cookies.get('userInfo') || '{}');
+            userInfo.profileBackground = backgroundUrl;
+            Cookies.set('userInfo', JSON.stringify(userInfo), { expires: 30 });
+
+            toast.success('Profile background updated!');
+        } catch (error) {
+            toast.error('Failed to upload background image');
+        } finally {
+            setUploadingBackground(false);
+            if (backgroundInputRef.current) backgroundInputRef.current.value = '';
+        }
+    };
+
     const handleGifProfileSelect = async (gifUrl) => {
         setShowGifPicker(false);
         setUploadingPhoto(true);
@@ -281,6 +316,13 @@ const Profile = () => {
         return `${API_BASE}${photo}`;
     };
 
+    const getBackgroundSrc = () => {
+        const background = profile?.profileBackground;
+        if (!background) return null;
+        if (background.startsWith('http')) return background;
+        return `${API_BASE}${background}`;
+    };
+
     if (loading) return (
         <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
@@ -304,7 +346,30 @@ const Profile = () => {
 
             {/* Profile Header */}
             <div className="relative h-36 md:h-48 rounded-2xl md:rounded-[2.5rem] bg-gradient-to-r from-primary-600 to-indigo-600 overflow-hidden shadow-2xl">
+                {getBackgroundSrc() && (
+                    <img src={getBackgroundSrc()} alt="Profile background" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                <div className="absolute inset-0 bg-black/20" />
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
+
+                <div className="absolute top-4 right-4 z-20">
+                    <input
+                        type="file"
+                        ref={backgroundInputRef}
+                        onChange={handleBackgroundUpload}
+                        className="hidden"
+                        accept="image/*"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => backgroundInputRef.current?.click()}
+                        className="p-2.5 rounded-xl bg-black/30 hover:bg-black/45 text-white transition-colors"
+                        title="Upload background image"
+                        disabled={uploadingBackground}
+                    >
+                        {uploadingBackground ? <Loader2 className="w-4 h-4 animate-spin" /> : <Image className="w-4 h-4" />}
+                    </button>
+                </div>
                 <div className="absolute -bottom-12 md:-bottom-12 left-4 md:left-10 flex items-end gap-4 md:gap-6">
                     {/* Profile Photo */}
                     <div className="relative group">

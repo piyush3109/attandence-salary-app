@@ -35,6 +35,7 @@ const loginUser = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 profilePhoto: user.profilePhoto || '',
+                profileBackground: user.profileBackground || '',
                 theme: user.theme || 'light',
                 token: generateToken(user._id),
                 orgId: user.orgId || 'default',
@@ -79,6 +80,7 @@ const verifyFirebaseUser = async (req, res) => {
                 email: email,
                 role: role,
                 profilePhoto: user.profilePhoto || '',
+                profileBackground: user.profileBackground || '',
                 theme: user.theme || 'light',
                 orgId: user.orgId || 'default'
             });
@@ -155,6 +157,7 @@ const guestLogin = async (req, res) => {
             email: adminUser.email,
             role: adminUser.role,
             profilePhoto: adminUser.profilePhoto || '',
+            profileBackground: adminUser.profileBackground || '',
             theme: adminUser.theme || 'light',
             token: generateToken(adminUser._id),
             orgId: adminUser.orgId || 'default',
@@ -229,7 +232,8 @@ const registerUser = async (req, res) => {
             employeeId,
             salaryRate: 0,
             rateType: 'per_day',
-            profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
+            profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+            profileBackground: ''
         });
 
         if (employee) {
@@ -257,6 +261,7 @@ const registerUser = async (req, res) => {
                 role: 'employee',
                 employeeId: employee.employeeId,
                 profilePhoto: employee.profilePhoto,
+                profileBackground: employee.profileBackground || '',
                 token: generateToken(employee._id),
                 orgId: employee.orgId || 'default',
                 isEmployee: true
