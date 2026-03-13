@@ -29,6 +29,10 @@ const adminSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    profileBackground: {
+        type: String,
+        default: '',
+    },
     orgId: {
         type: String,
         default: 'default',

@@ -179,31 +179,41 @@ const sendMessageWithFile = async (req, res) => {
     }
 };
 
-// @desc    Upload profile photo
+// @desc    Upload profile media (photo/background)
 // @route   POST /api/messages/profile-photo
 const uploadProfilePhoto = async (req, res) => {
     try {
         const file = req.file;
-        const { gifUrl } = req.body;
+        const { gifUrl, mediaType = 'photo' } = req.body;
 
-        let photoUrl = '';
+        if (!['photo', 'background'].includes(mediaType)) {
+            return res.status(400).json({ message: 'Invalid media type' });
+        }
+
+        let mediaUrl = '';
 
         if (gifUrl) {
-            // Using a GIF URL as profile photo
-            photoUrl = gifUrl;
+            mediaUrl = gifUrl;
         } else if (file) {
-            photoUrl = `/uploads/${file.filename}`;
+            mediaUrl = `/uploads/${file.filename}`;
         } else {
             return res.status(400).json({ message: 'No file or GIF URL provided' });
         }
 
+        const updateField = mediaType === 'background' ? 'profileBackground' : 'profilePhoto';
+
         if (req.user.role === 'employee') {
-            await Employee.findByIdAndUpdate(req.user._id, { profilePhoto: photoUrl });
+            await Employee.findByIdAndUpdate(req.user._id, { [updateField]: mediaUrl });
         } else {
-            await Admin.findByIdAndUpdate(req.user._id, { profilePhoto: photoUrl });
+            await Admin.findByIdAndUpdate(req.user._id, { [updateField]: mediaUrl });
         }
 
-        res.json({ profilePhoto: photoUrl, message: 'Profile photo updated successfully' });
+        res.json({
+            profilePhoto: mediaType === 'photo' ? mediaUrl : undefined,
+            profileBackground: mediaType === 'background' ? mediaUrl : undefined,
+            mediaType,
+            message: `${mediaType === 'background' ? 'Profile background' : 'Profile photo'} updated successfully`
+        });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }

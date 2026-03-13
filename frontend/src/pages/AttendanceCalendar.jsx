@@ -6,6 +6,7 @@ import {
     endOfMonth,
     eachDayOfInterval,
     isSameDay,
+    isSameMonth,
     startOfWeek,
     endOfWeek,
     addMonths,
@@ -14,9 +15,6 @@ import {
 import {
     ChevronLeft,
     ChevronRight,
-    Calendar as CalendarIcon,
-    CalendarCheck,
-    CalendarX,
     Clock,
     User
 } from 'lucide-react';
@@ -81,7 +79,10 @@ const AttendanceCalendar = () => {
     });
 
     const getStatusInfo = (day) => {
-        const record = attendanceData.find(a => isSameDay(new Date(a.date), day));
+        const record = attendanceData.find((a) => {
+            const date = new Date(a.date);
+            return !Number.isNaN(date.getTime()) && isSameDay(date, day);
+        });
         if (!record) return null;
 
         const colors = {
@@ -97,6 +98,12 @@ const AttendanceCalendar = () => {
             color: colors[record.status] || 'bg-gray-200',
             hours: record.workingHours
         };
+    };
+
+    const handleDayClick = (day) => {
+        if (!isSameMonth(day, currentMonth)) {
+            setCurrentMonth(startOfMonth(day));
+        }
     };
 
     return (
@@ -257,14 +264,16 @@ const AttendanceCalendar = () => {
                         <div className="grid grid-cols-7">
                             {days.map((day, idx) => {
                                 const info = getStatusInfo(day);
-                                const isCurrentMonth = format(day, 'MM') === format(currentMonth, 'MM');
+                                const isCurrentMonth = isSameMonth(day, currentMonth);
 
                                 return (
-                                    <div
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDayClick(day)}
                                         key={idx}
                                         className={cn(
-                                            "min-h-[120px] aspect-square p-4 border-r border-b border-gray-50 dark:border-gray-800 transition-all hover:bg-gray-50/50 dark:hover:bg-gray-800/20 relative group overflow-hidden",
-                                            !isCurrentMonth && "opacity-20 grayscale",
+                                            "min-h-[120px] aspect-square p-4 border-r border-b border-gray-50 dark:border-gray-800 transition-all hover:bg-gray-50/50 dark:hover:bg-gray-800/20 relative group overflow-hidden text-left",
+                                            !isCurrentMonth && "opacity-45",
                                             idx % 7 === 6 && "border-r-0"
                                         )}
                                     >
@@ -296,7 +305,7 @@ const AttendanceCalendar = () => {
                                         {isSameDay(day, new Date()) && (
                                             <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary-500 rounded-full" />
                                         )}
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>

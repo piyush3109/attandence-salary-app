@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
                 username: data.username,
                 role: data.role,
                 profilePhoto: data.profilePhoto || '',
+                profileBackground: data.profileBackground || '',
                 theme: data.theme,
                 token: data.token,
                 isEmployee: data.isEmployee
@@ -71,6 +72,7 @@ export const AuthProvider = ({ children }) => {
                 username: data.username,
                 role: data.role,
                 profilePhoto: data.profilePhoto || '',
+                profileBackground: data.profileBackground || '',
                 theme: data.theme,
                 token: data.token,
                 isEmployee: data.isEmployee

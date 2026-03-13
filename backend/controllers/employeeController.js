@@ -76,7 +76,7 @@ const updateEmployee = async (req, res) => {
 
         if (isOwnProfile && !isPrivileged) {
             // Employee can only update personal info
-            const allowedFields = ['name', 'email', 'phone', 'address', 'guarantor', 'profilePhoto'];
+            const allowedFields = ['name', 'email', 'phone', 'address', 'guarantor', 'profilePhoto', 'profileBackground'];
             const restrictedUpdate = {};
             for (const field of allowedFields) {
                 if (updateData[field] !== undefined) {
