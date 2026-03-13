@@ -28,11 +28,11 @@ const Layout = () => {
             <Sidebar />
 
             {/* Top Bar with Notification Bell */}
-            <div className="fixed top-4 right-4 md:right-8 z-50 flex items-center gap-3">
+            <div className="fixed right-4 md:right-8 z-50 flex items-center gap-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
                 <NotificationBell />
             </div>
 
-            <main className="flex-1 lg:ml-72 p-4 md:p-10 pt-24 lg:pt-10 transition-all duration-300 relative z-10">
+            <main className="flex-1 lg:ml-72 p-4 md:p-10 pt-[calc(env(safe-area-inset-top,0px)+5.5rem)] lg:pt-10 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] transition-all duration-300 relative z-10 overflow-x-hidden">
                 <div className="max-w-7xl mx-auto min-h-full">
                     <Outlet />
                 </div>
