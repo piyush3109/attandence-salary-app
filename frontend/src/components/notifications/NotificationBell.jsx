@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, CheckCheck, Trash2, AlertTriangle, Info, Megaphone, MessageSquare, CalendarCheck, IndianRupee, UserPlus } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, Trash2, AlertTriangle, Info, Megaphone, MessageSquare, CalendarCheck, IndianRupee, UserPlus, ClipboardList } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getSocket, connectSocket } from '../../utils/socket';
 import api from '../../utils/api';
@@ -11,6 +11,7 @@ const NOTIFICATION_ICONS = {
     salary: IndianRupee,
     leave: AlertTriangle,
     employee: UserPlus,
+    task: ClipboardList,
     general: Info,
 };
 
@@ -159,6 +160,17 @@ const NotificationBell = () => {
             });
         });
 
+        // Listen for task updates
+        socket.on('task_update', (data) => {
+            addNotification({
+                type: 'task',
+                title: '📋 Task Update',
+                message: data.message || 'Task status changed',
+                priority: 'medium',
+                data: data,
+            });
+        });
+
         // Generic notification channel
         socket.on('notification', (data) => {
             // If the notification has a specific receiverId, only show it to them
@@ -182,6 +194,7 @@ const NotificationBell = () => {
             socket.off('salary_update');
             socket.off('leave_update');
             socket.off('employee_joined');
+            socket.off('task_update');
             socket.off('notification');
         };
     }, [user]);

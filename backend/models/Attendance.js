@@ -29,6 +29,13 @@ const attendanceSchema = new mongoose.Schema({
     ipAddress: { type: String },
     deviceInfo: { type: String },
     isMockLocation: { type: Boolean, default: false }, // Fraud detection
+    approvalStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
+    },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    approvalDate: { type: Date },
     orgId: { type: String, default: 'default' }
 }, { timestamps: true });
 

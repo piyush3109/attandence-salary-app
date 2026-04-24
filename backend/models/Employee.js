@@ -93,6 +93,14 @@ const employeeSchema = new mongoose.Schema({
         category: String, // changed 'type' to 'category' to avoid conflict
         uploadedAt: { type: Date, default: Date.now }
     }],
+    kycVerified: {
+        type: Boolean,
+        default: false
+    },
+    digilockerData: {
+        type: Object,
+        default: null
+    },
     theme: {
         type: String,
         default: 'light'

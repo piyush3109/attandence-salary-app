@@ -146,7 +146,9 @@ const Profile = () => {
             address: profile.address || '',
             guarantorName: profile.guarantor?.name || '',
             guarantorPhone: profile.guarantor?.phone || '',
-            guarantorRelation: profile.guarantor?.relation || ''
+            guarantorRelation: profile.guarantor?.relation || '',
+            salaryRate: profile.salaryRate || '',
+            rateType: profile.rateType || 'per_day'
         });
         setIsEditing(true);
     };
@@ -168,7 +170,9 @@ const Profile = () => {
                     name: editData.guarantorName,
                     phone: editData.guarantorPhone,
                     relation: editData.guarantorRelation
-                }
+                },
+                salaryRate: editData.salaryRate ? Number(editData.salaryRate) : undefined,
+                rateType: editData.rateType
             };
 
             await api.put(`/employees/${user._id}`, updatePayload);
@@ -279,6 +283,20 @@ const Profile = () => {
         if (!photo) return null;
         if (photo.startsWith('http')) return photo;
         return `${API_BASE}${photo}`;
+    };
+
+    const handleDigiLockerVerify = async () => {
+        try {
+            const { data } = await api.post(`/employees/${user._id}/kyc-verify`);
+            setProfile(prev => ({
+                ...prev,
+                kycVerified: data.kycVerified,
+                digilockerData: { verifiedAt: new Date() }
+            }));
+            toast.success('Successfully Verified with DigiLocker');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'DigiLocker verification failed');
+        }
     };
 
     if (loading) return (
@@ -570,13 +588,33 @@ const Profile = () => {
                             <div className="space-y-4 md:space-y-6">
                                 <div className="flex items-center justify-between p-3 md:p-4 bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm">
                                     <span className="text-[10px] font-black text-gray-400 uppercase">Rate</span>
-                                    <span className="text-base md:text-lg font-black text-emerald-600">₹{profile.salaryRate?.toLocaleString()}</span>
+                                    {isEditing ? (
+                                        <input
+                                            type="number"
+                                            value={editData.salaryRate}
+                                            onChange={(e) => setEditData(prev => ({ ...prev, salaryRate: e.target.value }))}
+                                            className="w-24 px-2 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                        />
+                                    ) : (
+                                        <span className="text-base md:text-lg font-black text-emerald-600">₹{profile.salaryRate?.toLocaleString()}</span>
+                                    )}
                                 </div>
                                 <div className="flex items-center justify-between p-3 md:p-4 bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm">
                                     <span className="text-[10px] font-black text-gray-400 uppercase">Type</span>
-                                    <span className="text-xs font-black uppercase text-gray-900 dark:text-white">
-                                        {profile.rateType?.replace('_', ' ')}
-                                    </span>
+                                    {isEditing ? (
+                                        <select
+                                            value={editData.rateType}
+                                            onChange={(e) => setEditData(prev => ({ ...prev, rateType: e.target.value }))}
+                                            className="w-28 px-2 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg text-xs font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                        >
+                                            <option value="per_day">Per Day</option>
+                                            <option value="per_hour">Per Hour</option>
+                                        </select>
+                                    ) : (
+                                        <span className="text-xs font-black uppercase text-gray-900 dark:text-white">
+                                            {profile.rateType?.replace('_', ' ')}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="p-4 md:p-5 bg-amber-500/10 rounded-[1.2rem] md:rounded-[1.5rem] border border-amber-500/20">
                                     <p className="text-[10px] font-black text-amber-600 uppercase mb-1 tracking-widest">Note</p>
@@ -606,6 +644,43 @@ const Profile = () => {
                             </h3>
 
                             <div className="space-y-4">
+                                {/* DigiLocker Verification */}
+                                <div className="p-4 rounded-2xl border space-y-3 bg-white dark:bg-gray-800 border-green-500/20 shadow-sm relative overflow-hidden">
+                                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-green-500/10 rounded-full blur-xl"></div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                                                <Shield className="w-4 h-4 text-green-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-gray-900 dark:text-white">DigiLocker KYC</p>
+                                                <p className="text-[10px] text-gray-500">Government Identity Verification</p>
+                                            </div>
+                                        </div>
+                                        {profile.kycVerified ? (
+                                            <span className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-green-500/20">
+                                                <Check className="w-3 h-3" />
+                                                Verified
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-amber-500/20">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Pending
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {!profile.kycVerified && (
+                                        <button
+                                            onClick={handleDigiLockerVerify}
+                                            className="w-full btn bg-emerald-600 text-white hover:bg-emerald-700 border-none py-2.5 text-xs h-auto shadow-xl shadow-emerald-500/20 transition-all font-black uppercase tracking-widest mt-2 flex items-center justify-center gap-2"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                            Verify with DigiLocker
+                                        </button>
+                                    )}
+                                </div>
+
                                 {/* Upload UI */}
                                 <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-3">
                                     <div className="flex items-center gap-2">

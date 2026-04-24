@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getEmployees, createEmployee, updateEmployee, deleteEmployee, getEmployeeById, promoteToAdmin, uploadDocument } = require('../controllers/employeeController');
+const { getEmployees, createEmployee, updateEmployee, deleteEmployee, getEmployeeById, promoteToAdmin, uploadDocument, verifyDigilocker } = require('../controllers/employeeController');
 const { protect, checkRole } = require('../middleware/authMiddleware');
 
 const multer = require('multer');
@@ -36,5 +36,6 @@ router.put('/:id/promote', protect, checkRole(['admin', 'ceo']), promoteToAdmin)
 router.delete('/:id', protect, checkRole(['admin', 'ceo']), deleteEmployee);
 
 router.post('/:id/documents', protect, upload.single('document'), uploadDocument);
+router.post('/:id/kyc-verify', protect, verifyDigilocker);
 
 module.exports = router;

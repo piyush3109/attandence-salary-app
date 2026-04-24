@@ -5,10 +5,14 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
+const { connectRedis } = require('./config/redis');
 const seedData = require('./utils/seeder');
 
 // Load environment variables
 dotenv.config();
+
+// Connect Redis (OTP cache, token blacklist)
+connectRedis();
 
 // Connect to Database and Seed
 connectDB().then(() => {
@@ -28,7 +32,7 @@ const io = new Server(server, {
     pingInterval: 25000
 });
 
-// Track online users: { odoo: socketId }
+// Track online users: { userId: socketId }
 const onlineUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -55,25 +59,36 @@ io.on('connection', (socket) => {
         const { conversationId, message } = data;
         // Broadcast to everyone in the conversation except sender
         socket.to(conversationId).emit('new_message', message);
-        // Also notify for conversation list update
+        // Also notify for conversation list update globally
         io.emit('conversation_update', { conversationId });
     });
 
-    // Typing indicator
+    // Typing indicators scoped strictly to conversation room
     socket.on('typing', (data) => {
         socket.to(data.conversationId).emit('user_typing', {
             userId: data.userId,
-            name: data.name
+            name: data.name,
+            conversationId: data.conversationId
         });
     });
 
     socket.on('stop_typing', (data) => {
         socket.to(data.conversationId).emit('user_stop_typing', {
-            userId: data.userId
+            userId: data.userId,
+            conversationId: data.conversationId
         });
     });
 
-    // Disconnect
+    // Delete message broadcast
+    socket.on('delete_message', (data) => {
+        socket.to(data.conversationId).emit('message_deleted', data);
+    });
+
+    // Edit message broadcast
+    socket.on('edit_message', (data) => {
+        socket.to(data.conversationId).emit('message_edited', data);
+    });
+
     socket.on('disconnect', () => {
         // Remove user from online list
         for (const [userId, socketId] of onlineUsers.entries()) {

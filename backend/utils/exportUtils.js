@@ -62,6 +62,15 @@ const generateSalaryPDF = (report, month, year, res) => {
             currentY += 25;
         }
 
+        // Performance Bonus Row
+        if (item.taskBonus > 0) {
+            doc.text('Performance Bonus (Tasks)', 60, currentY);
+            doc.text('-', 250, currentY);
+            doc.text('-', 350, currentY);
+            doc.text(`₹${(item.taskBonus || 0).toLocaleString()}`, 480, currentY);
+            currentY += 25;
+        }
+
         // Deductions Section
         doc.fontSize(14).font('Helvetica-Bold').text('DEDUCTIONS', 50, currentY + 30);
         doc.moveTo(50, currentY + 50).lineTo(545, currentY + 50).strokeColor('#e5e7eb').stroke();

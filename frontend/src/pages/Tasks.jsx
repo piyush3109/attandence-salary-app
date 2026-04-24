@@ -37,7 +37,8 @@ const Tasks = () => {
         description: '',
         assignedTo: '',
         priority: 'medium',
-        dueDate: ''
+        dueDate: '',
+        salaryBonus: 0
     });
 
     const isAdmin = ['admin', 'ceo', 'manager'].includes(user?.role);
@@ -85,7 +86,7 @@ const Tasks = () => {
             await api.post('/tasks', formData);
             toast.success('Work assigned successfully');
             setShowModal(false);
-            setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+            setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '', salaryBonus: 0 });
             fetchTasks();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to assign work');
@@ -184,6 +185,11 @@ const Tasks = () => {
                                             <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider", statusColors[task.status])}>
                                                 {task.status}
                                             </span>
+                                            {task.salaryBonus > 0 && (
+                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
+                                                    +₹{task.salaryBonus} Bonus
+                                                </span>
+                                            )}
                                         </div>
                                         <h3 className="text-xl font-black text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors uppercase mt-2">
                                             {task.title}
@@ -340,6 +346,16 @@ const Tasks = () => {
                                         className="input"
                                         value={formData.dueDate}
                                         onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Completion Bonus (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        placeholder="One-time reward"
+                                        value={formData.salaryBonus}
+                                        onChange={(e) => setFormData({ ...formData, salaryBonus: e.target.value })}
                                     />
                                 </div>
                             </div>

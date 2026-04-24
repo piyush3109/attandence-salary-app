@@ -107,7 +107,7 @@ const Attendance = () => {
             const attMap = {};
             attRes.data.forEach(record => {
                 const empId = typeof record.employee === 'object' ? record.employee._id : record.employee;
-                attMap[empId] = { status: record.status, workingHours: record.workingHours };
+                attMap[empId] = { status: record.status, workingHours: record.workingHours, approvalStatus: record.approvalStatus || 'pending', recordId: record._id };
             });
             setAttendance(attMap);
         } catch (error) { toast.error('Sync failed'); }
@@ -181,6 +181,20 @@ const Attendance = () => {
             toast.success('Fleet status updated');
         } catch (error) { toast.error('Bulk update failed'); }
         finally { setLoading(false); }
+    };
+
+    const handleApproval = async (recordId, status, employeeId) => {
+        try {
+            await api.put(`/attendance/${recordId}/status`, { status });
+            toast.success(`Attendance ${status}`);
+            setAttendance(prev => ({
+                ...prev,
+                [employeeId]: { ...prev[employeeId], approvalStatus: status }
+            }));
+            fetchEmployeesAndAttendance();
+        } catch (error) {
+            toast.error('Failed to update status');
+        }
     };
 
     const statusColors = {
@@ -311,17 +325,22 @@ const Attendance = () => {
                     {/* Table View */}
                     <div className="hidden md:block card overflow-hidden">
                         <table className="w-full text-left">
-                            <thead className="bg-gray-50 dark:bg-gray-800/50 text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                                <thead className="bg-gray-50 dark:bg-gray-800/50 text-[10px] font-black uppercase text-gray-400 tracking-widest">
                                 <tr>
                                     <th className="px-8 py-5">Personnel</th>
                                     <th className="px-8 py-5">Status</th>
                                     <th className="px-8 py-5">Hours</th>
-                                    <th className="px-8 py-5 text-right">Commit</th>
+                                    <th className="px-8 py-5 text-right">Commit / Approval</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                 {employees.map(emp => {
                                     const record = attendance[emp._id] || {};
+                                    const canEdit = isEditingAllowed || emp._id === user._id;
+                                    
+                                    // If not admin and not self, hide or disable
+                                    if (!isEditingAllowed && emp._id !== user._id) return null;
+
                                     return (
                                         <tr key={emp._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-all">
                                             <td className="px-8 py-6">
@@ -340,11 +359,13 @@ const Attendance = () => {
                                                     {Object.keys(statusColors).map(s => (
                                                         <button
                                                             key={s}
-                                                            onClick={() => isEditingAllowed && markStatus(emp._id, s)}
+                                                            onClick={() => canEdit && markStatus(emp._id, s)}
                                                             className={cn(
                                                                 "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border",
-                                                                record.status === s ? statusColors[s] : "bg-transparent text-gray-400 border-gray-100 dark:border-gray-800"
+                                                                record.status === s ? statusColors[s] : "bg-transparent text-gray-400 border-gray-100 dark:border-gray-800",
+                                                                !canEdit && "opacity-50 cursor-not-allowed"
                                                             )}
+                                                            disabled={!canEdit}
                                                         >
                                                             {s}
                                                         </button>
@@ -356,13 +377,32 @@ const Attendance = () => {
                                                     type="number"
                                                     className="w-20 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-black text-sm"
                                                     value={record.workingHours || 0}
-                                                    onChange={(e) => isEditingAllowed && updateHours(emp._id, e.target.value)}
+                                                    onChange={(e) => canEdit && updateHours(emp._id, e.target.value)}
+                                                    disabled={!canEdit}
                                                 />
                                             </td>
                                             <td className="px-8 py-6 text-right">
-                                                <button onClick={() => handleSave(emp._id)} className="p-3 bg-primary-600 text-white rounded-xl shadow-lg shadow-primary-500/20 hover:scale-110 transition-transform">
-                                                    <Save className="w-5 h-5" />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {record.recordId && isEditingAllowed && record.approvalStatus === 'pending' && (
+                                                        <>
+                                                            <button onClick={() => handleApproval(record.recordId, 'approved', emp._id)} className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-500 hover:text-white rounded-xl transition-all" title="Approve">
+                                                                <CheckCircle2 className="w-5 h-5" />
+                                                            </button>
+                                                            <button onClick={() => handleApproval(record.recordId, 'rejected', emp._id)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all" title="Reject">
+                                                                <XCircle className="w-5 h-5" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {record.approvalStatus === 'approved' && <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 px-2">Approved</span>}
+                                                    {record.approvalStatus === 'rejected' && <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 px-2">Rejected</span>}
+                                                    {record.approvalStatus === 'pending' && !isEditingAllowed && <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 px-2">Pending Appr.</span>}
+
+                                                    {canEdit && (
+                                                        <button onClick={() => handleSave(emp._id)} className="p-3 bg-primary-600 text-white rounded-xl shadow-lg shadow-primary-500/20 hover:scale-110 transition-transform ml-2">
+                                                            <Save className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -375,6 +415,10 @@ const Attendance = () => {
                     <div className="md:hidden space-y-4">
                         {employees.map(emp => {
                             const record = attendance[emp._id] || {};
+                            const canEdit = isEditingAllowed || emp._id === user._id;
+
+                            if (!isEditingAllowed && emp._id !== user._id) return null;
+
                             return (
                                 <div key={emp._id} className="card p-6 space-y-6">
                                     <div className="flex items-center gap-4">
@@ -385,20 +429,24 @@ const Attendance = () => {
                                             <p className="font-black text-lg dark:text-white uppercase tracking-tight">{emp.name}</p>
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{emp.position}</p>
                                         </div>
-                                        <button onClick={() => handleSave(emp._id)} className="p-4 bg-primary-600 text-white rounded-2xl shadow-xl shadow-primary-500/20">
-                                            <Save className="w-6 h-6" />
-                                        </button>
+                                        {canEdit && (
+                                            <button onClick={() => handleSave(emp._id)} className="p-4 bg-primary-600 text-white rounded-2xl shadow-xl shadow-primary-500/20">
+                                                <Save className="w-6 h-6" />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
                                         <div className="flex flex-wrap gap-2">
                                             {Object.keys(statusColors).map(s => (
                                                 <button
                                                     key={s}
-                                                    onClick={() => isEditingAllowed && markStatus(emp._id, s)}
+                                                    onClick={() => canEdit && markStatus(emp._id, s)}
                                                     className={cn(
                                                         "flex-1 min-w-[100px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border",
-                                                        record.status === s ? statusColors[s] : "bg-transparent text-gray-400 border-gray-100 dark:border-gray-800"
+                                                        record.status === s ? statusColors[s] : "bg-transparent text-gray-400 border-gray-100 dark:border-gray-800",
+                                                        !canEdit && "opacity-50 cursor-not-allowed"
                                                     )}
+                                                    disabled={!canEdit}
                                                 >
                                                     {s}
                                                 </button>
@@ -410,8 +458,25 @@ const Attendance = () => {
                                                 type="number"
                                                 className="w-20 bg-white dark:bg-gray-700 border-none rounded-xl px-4 py-2 text-right font-black"
                                                 value={record.workingHours || 0}
-                                                onChange={(e) => isEditingAllowed && updateHours(emp._id, e.target.value)}
+                                                onChange={(e) => canEdit && updateHours(emp._id, e.target.value)}
+                                                disabled={!canEdit}
                                             />
+                                        </div>
+
+                                        <div className="pt-2 flex justify-end gap-2">
+                                            {record.recordId && isEditingAllowed && record.approvalStatus === 'pending' && (
+                                                <>
+                                                    <button onClick={() => handleApproval(record.recordId, 'approved', emp._id)} className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 hover:bg-emerald-500 hover:text-white rounded-xl transition-all">
+                                                        Approve
+                                                    </button>
+                                                    <button onClick={() => handleApproval(record.recordId, 'rejected', emp._id)} className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all">
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            )}
+                                            {record.approvalStatus === 'approved' && <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Approved</span>}
+                                            {record.approvalStatus === 'rejected' && <span className="text-[10px] font-black uppercase tracking-widest text-rose-500">Rejected</span>}
+                                            {record.approvalStatus === 'pending' && !isEditingAllowed && <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pending Appr.</span>}
                                         </div>
                                     </div>
                                 </div>

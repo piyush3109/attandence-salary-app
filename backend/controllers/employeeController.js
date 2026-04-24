@@ -75,8 +75,8 @@ const updateEmployee = async (req, res) => {
         const isPrivileged = ['admin', 'ceo', 'manager', 'accountant'].includes(req.user.role);
 
         if (isOwnProfile && !isPrivileged) {
-            // Employee can only update personal info
-            const allowedFields = ['name', 'email', 'phone', 'address', 'guarantor', 'profilePhoto'];
+            // Employee can update personal info AND salary details based on task completion
+            const allowedFields = ['name', 'email', 'phone', 'address', 'guarantor', 'profilePhoto', 'salaryRate', 'rateType'];
             const restrictedUpdate = {};
             for (const field of allowedFields) {
                 if (updateData[field] !== undefined) {
@@ -226,6 +226,36 @@ const uploadDocument = async (req, res) => {
     }
 };
 
+// @desc    Verify KYC via Digilocker (Mock)
+// @route   POST /api/employees/:id/kyc-verify
+const verifyDigilocker = async (req, res) => {
+    try {
+        const orgId = req.user.orgId || 'default';
+        const employeeId = req.params.id;
+
+        if (req.user.role === 'employee' && req.user._id.toString() !== employeeId) {
+            return res.status(403).json({ message: 'Access denied.' });
+        }
+
+        const employee = await Employee.findOne({ _id: employeeId, orgId });
+        if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+        // Simulate DigiLocker API response
+        employee.kycVerified = true;
+        employee.digilockerData = {
+            verifiedAt: new Date(),
+            referenceId: 'DL-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+            provider: 'DigiLocker India'
+        };
+
+        await employee.save();
+
+        res.json({ message: 'KYC Verified Successfully via DigiLocker', kycVerified: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getEmployees,
     createEmployee,
@@ -233,5 +263,6 @@ module.exports = {
     updateEmployee,
     deleteEmployee,
     promoteToAdmin,
-    uploadDocument
+    uploadDocument,
+    verifyDigilocker
 };

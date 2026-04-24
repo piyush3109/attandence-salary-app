@@ -125,4 +125,34 @@ const getEmployeeAttendanceHistory = async (req, res) => {
     }
 };
 
-module.exports = { markAttendance, getAttendanceByDate, getEmployeeAttendanceHistory };
+// @desc    Update Attendance Approval Status
+// @route   PUT /api/attendance/:id/status
+const updateAttendanceStatus = async (req, res) => {
+    const { status } = req.body; // 'approved' or 'rejected'
+    try {
+        const orgId = req.user.orgId || 'default';
+        const attendance = await Attendance.findOne({ _id: req.params.id, orgId });
+        if (!attendance) return res.status(404).json({ message: 'Attendance record not found' });
+        
+        attendance.approvalStatus = status;
+        attendance.approvedBy = req.user._id;
+        attendance.approvalDate = new Date();
+        await attendance.save();
+        
+        const io = req.app.get('io');
+        if (io) {
+            // Emitting to room/user specifically would be better, but doing app-wide or room-based
+            io.emit('notification', {
+                type: 'attendance_approval',
+                title: 'Attendance ' + status,
+                message: `Your attendance for ${DateTime.fromJSDate(attendance.date).toFormat('dd MMM')} was ${status}.`,
+                employeeId: attendance.employee
+            });
+        }
+        res.json(attendance);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = { markAttendance, getAttendanceByDate, getEmployeeAttendanceHistory, updateAttendanceStatus };

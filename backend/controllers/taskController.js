@@ -6,7 +6,7 @@ const Employee = require('../models/Employee');
 const createTask = async (req, res) => {
     try {
         const orgId = req.user.orgId || 'default';
-        const { title, description, assignedTo, priority, dueDate } = req.body;
+        const { title, description, assignedTo, priority, dueDate, salaryBonus } = req.body;
         const task = await Task.create({
             title,
             description,
@@ -14,7 +14,8 @@ const createTask = async (req, res) => {
             assignedBy: req.user._id,
             priority,
             dueDate,
-            orgId
+            orgId,
+            salaryBonus: salaryBonus || 0
         });
 
         // Emit real-time updates

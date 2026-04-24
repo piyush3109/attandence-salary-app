@@ -1,35 +1,51 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const Admin = require('../models/Admin');
 const Employee = require('../models/Employee');
 const { admin: firebaseAdmin, auth: firebaseAuth } = require('../config/firebase');
 const { syncEmployeeToFirebase } = require('../utils/firebaseSync');
-const { sendVerificationOTP, verifyStoredOTP, sendGreetingEmail } = require('../utils/emailService');
+const {
+    sendVerificationOTP,
+    verifyStoredOTP,
+    sendGreetingEmail,
+    sendPasswordResetOTP,
+    verifyPasswordResetOTP,
+    sendPasswordChangedEmail,
+    sendNotificationEmail,
+    sendRoleChangeEmail
+} = require('../utils/emailService');
+const { cacheSet, cacheGet, cacheDel } = require('../config/redis');
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+// --------------------------------------------------------------------------
+// Helpers
+// --------------------------------------------------------------------------
+const TOKEN_TTL = '30d';
+const TOKEN_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
+
+const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: TOKEN_TTL });
+
+const findUser = async (identifier) => {
+    let user = await Admin.findOne({ $or: [{ username: identifier }, { email: identifier }] });
+    let isEmployee = false;
+    if (!user) {
+        user = await Employee.findOne({
+            $or: [{ email: identifier }, { phone: identifier }, { employeeId: identifier }],
+            active: true
+        });
+        isEmployee = !!user;
+    }
+    return { user, isEmployee };
 };
 
+// --------------------------------------------------------------------------
+// POST /api/auth/login
+// --------------------------------------------------------------------------
 const loginUser = async (req, res) => {
     const { identifier, password } = req.body;
-
     try {
-        let user = await Admin.findOne({ $or: [{ username: identifier }, { email: identifier }] });
-        let isEmployee = false;
-
-        if (!user) {
-            user = await Employee.findOne({
-                $or: [
-                    { email: identifier },
-                    { phone: identifier },
-                    { employeeId: identifier }
-                ],
-                active: true
-            });
-            isEmployee = !!user;
-        }
-
+        const { user, isEmployee } = await findUser(identifier);
         if (user && (await user.matchPassword(password))) {
-            res.json({
+            return res.json({
                 _id: user._id,
                 username: isEmployee ? user.name : user.username,
                 email: user.email,
@@ -40,17 +56,166 @@ const loginUser = async (req, res) => {
                 orgId: user.orgId || 'default',
                 isEmployee
             });
-        } else {
-            res.status(401).json({ message: 'Invalid credentials' });
         }
+        res.status(401).json({ message: 'Invalid credentials' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// --------------------------------------------------------------------------
+// POST /api/auth/logout  (requires protect middleware)
+// Blacklists the current JWT in Redis so it cannot be reused
+// --------------------------------------------------------------------------
+const logoutUser = async (req, res) => {
+    try {
+        const token = req.token;
+        if (token) {
+            // Store blacklisted token until its natural expiry
+            await cacheSet(`blacklist:${token}`, '1', TOKEN_SECONDS);
+        }
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --------------------------------------------------------------------------
+// POST /api/auth/forgot-password
+// Sends a reset OTP to the user's registered email
+// --------------------------------------------------------------------------
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    try {
+        let user = await Admin.findOne({ email });
+        let name = user ? user.username : null;
+        if (!user) {
+            user = await Employee.findOne({ email, active: true });
+            name = user ? user.name : null;
+        }
+
+        // Always respond with success to prevent email enumeration
+        if (!user) {
+            return res.json({ message: 'If an account with this email exists, you will receive a reset code.' });
+        }
+
+        const result = await sendPasswordResetOTP(email, name);
+        if (!result.success) {
+            return res.status(500).json({ message: 'Failed to send reset email. Check email configuration.' });
+        }
+
+        res.json({ message: 'Password reset code sent to your email.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --------------------------------------------------------------------------
+// POST /api/auth/verify-reset-otp
+// Verifies the reset OTP and marks the session as verified in Redis
+// --------------------------------------------------------------------------
+const verifyResetOTP = async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+
+    const result = await verifyPasswordResetOTP(email, otp);
+    if (result.valid) {
+        return res.json({ verified: true, message: result.message });
+    }
+    res.status(400).json({ verified: false, message: result.message });
+};
+
+// --------------------------------------------------------------------------
+// POST /api/auth/reset-password
+// Resets password after OTP has been verified
+// --------------------------------------------------------------------------
+const resetPassword = async (req, res) => {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+        return res.status(400).json({ message: 'Email and new password are required' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        // Confirm OTP was verified
+        const verified = await cacheGet(`reset_verified:${email}`);
+        if (!verified) {
+            return res.status(403).json({ message: 'OTP not verified. Please complete the OTP step first.' });
+        }
+
+        let user = await Admin.findOne({ email });
+        let name = user ? user.username : null;
+        if (!user) {
+            user = await Employee.findOne({ email, active: true });
+            name = user ? user.name : null;
+        }
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.password = newPassword; // pre-save hook will hash it
+        await user.save();
+
+        await cacheDel(`reset_verified:${email}`);
+
+        // Send confirmation email (non-blocking)
+        sendPasswordChangedEmail(email, name).catch(() => {});
+
+        res.json({ message: 'Password reset successfully. You can now log in.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --------------------------------------------------------------------------
+// PUT /api/auth/change-password  (requires protect middleware)
+// For logged-in users who want to change their own password
+// --------------------------------------------------------------------------
+const changePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current and new passwords are required' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+    if (currentPassword === newPassword) {
+        return res.status(400).json({ message: 'New password must differ from the current password' });
+    }
+
+    try {
+        const Model = req.userType === 'admin' ? Admin : Employee;
+        const user = await Model.findById(req.user._id);
+
+        const isMatch = await user.matchPassword(currentPassword);
+        if (!isMatch) return res.status(401).json({ message: 'Current password is incorrect' });
+
+        user.password = newPassword;
+        await user.save();
+
+        // Blacklist current token so user must re-login
+        if (req.token) {
+            await cacheSet(`blacklist:${req.token}`, '1', TOKEN_SECONDS);
+        }
+
+        // Send confirmation email (non-blocking)
+        const name = req.userType === 'admin' ? user.username : user.name;
+        sendPasswordChangedEmail(user.email, name).catch(() => {});
+
+        res.json({ message: 'Password changed successfully. Please log in again with your new password.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --------------------------------------------------------------------------
+// Firebase user verification
+// --------------------------------------------------------------------------
 const verifyFirebaseUser = async (req, res) => {
     const { email, uid } = req.body;
-
     try {
         if (firebaseAuth && uid) {
             try {
@@ -65,58 +230,51 @@ const verifyFirebaseUser = async (req, res) => {
 
         let user = await Admin.findOne({ email });
         let role = user ? user.role : null;
-
         if (!user) {
             user = await Employee.findOne({ email, active: true });
             role = user ? user.role : null;
         }
 
         if (user) {
-            res.json({
+            return res.json({
                 authorized: true,
                 _id: user._id,
                 username: role === 'employee' ? user.name : user.username,
-                email: email,
-                role: role,
+                email,
+                role,
                 profilePhoto: user.profilePhoto || '',
                 theme: user.theme || 'light',
                 orgId: user.orgId || 'default'
             });
-        } else {
-            res.status(403).json({ authorized: false, message: 'User not authorized by admin' });
         }
+        res.status(403).json({ authorized: false, message: 'User not authorized by admin' });
     } catch (error) {
         console.error('Verify Firebase Error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
+// --------------------------------------------------------------------------
+// POST /api/auth/setup — create first admin
+// --------------------------------------------------------------------------
 const createInitialAdmin = async (req, res) => {
     const { username, email, password } = req.body;
     const adminEmail = email || 'tiwariansh626@gmail.com';
     const adminPassword = password || '@piyush3109';
-
     try {
         const adminExists = await Admin.findOne({ $or: [{ username }, { email: adminEmail }] });
-
         if (adminExists) return res.status(400).json({ message: 'Admin already exists' });
 
-        await Admin.create({
-            username: username || 'tiwariansh',
-            email: adminEmail,
-            password: adminPassword,
-            role: 'admin'
-        });
-
-        res.status(201).json({
-            message: 'Admin created successfully',
-            email: adminEmail
-        });
+        await Admin.create({ username: username || 'tiwariansh', email: adminEmail, password: adminPassword, role: 'admin' });
+        res.status(201).json({ message: 'Admin created successfully', email: adminEmail });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// --------------------------------------------------------------------------
+// PUT /api/auth/theme
+// --------------------------------------------------------------------------
 const updateUserTheme = async (req, res) => {
     const { theme } = req.body;
     try {
@@ -131,6 +289,9 @@ const updateUserTheme = async (req, res) => {
     }
 };
 
+// --------------------------------------------------------------------------
+// POST /api/auth/guest-login
+// --------------------------------------------------------------------------
 const guestLogin = async (req, res) => {
     const { email, password } = req.body;
     const targetEmail = 'tiwariansh626@gmail.com';
@@ -138,16 +299,9 @@ const guestLogin = async (req, res) => {
 
     if (email === targetEmail && password === targetPassword) {
         let adminUser = await Admin.findOne({ email: targetEmail });
-
         if (!adminUser) {
-            adminUser = await Admin.create({
-                username: 'tiwariansh',
-                email: targetEmail,
-                password: targetPassword,
-                role: 'admin'
-            });
+            adminUser = await Admin.create({ username: 'tiwariansh', email: targetEmail, password: targetPassword, role: 'admin' });
         }
-
         return res.json({
             authorized: true,
             _id: adminUser._id,
@@ -164,14 +318,14 @@ const guestLogin = async (req, res) => {
     res.status(401).json({ message: 'Invalid credentials' });
 };
 
-// Step 1: Send OTP to email for verification
+// --------------------------------------------------------------------------
+// OTP for new user email verification
+// --------------------------------------------------------------------------
 const sendEmailOTP = async (req, res) => {
     const { email, name } = req.body;
-
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
     try {
-        // Check if email already exists
         const existingEmployee = await Employee.findOne({ email });
         const existingAdmin = await Admin.findOne({ email });
         if (existingEmployee || existingAdmin) {
@@ -180,50 +334,39 @@ const sendEmailOTP = async (req, res) => {
 
         const result = await sendVerificationOTP(email, name || 'User');
         if (result.success) {
-            res.json({ message: result.message });
-        } else {
-            // Email failed but don't block registration — allow skipping OTP
-            console.warn('Email OTP failed, allowing registration without OTP:', result.message);
-            res.json({ message: 'Email service unavailable. Proceeding without verification.', skipOtp: true });
+            return res.json({ message: result.message });
         }
+        console.warn('Email OTP failed, allowing registration without OTP:', result.message);
+        res.json({ message: 'Email service unavailable. Proceeding without verification.', skipOtp: true });
     } catch (error) {
-        // Even on error, allow registration to proceed
         console.warn('OTP send error:', error.message);
         res.json({ message: 'Email service unavailable. Proceeding without verification.', skipOtp: true });
     }
 };
 
-// Step 2: Verify the OTP
 const verifyEmailOTP = async (req, res) => {
     const { email, otp } = req.body;
-
     if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
 
-    const result = verifyStoredOTP(email, otp);
+    const result = await verifyStoredOTP(email, otp);
     if (result.valid) {
-        res.json({ verified: true, message: result.message });
-    } else {
-        res.status(400).json({ verified: false, message: result.message });
+        return res.json({ verified: true, message: result.message });
     }
+    res.status(400).json({ verified: false, message: result.message });
 };
 
-// Step 3: Register after email verification
+// --------------------------------------------------------------------------
+// POST /api/auth/register
+// --------------------------------------------------------------------------
 const registerUser = async (req, res) => {
     const { name, email, phone, password, position, address } = req.body;
-
     try {
         const userExists = await Employee.findOne({ $or: [{ email }, { phone }] });
-        if (userExists) {
-            return res.status(400).json({ message: 'User with this email or phone already exists' });
-        }
+        if (userExists) return res.status(400).json({ message: 'User with this email or phone already exists' });
 
         const employeeId = `EMP${Math.floor(1000 + Math.random() * 9000)}`;
-
         const employee = await Employee.create({
-            name,
-            email,
-            phone,
-            password,
+            name, email, phone, password,
             position: position || 'Employee',
             address: address || '',
             employeeId,
@@ -234,23 +377,16 @@ const registerUser = async (req, res) => {
 
         if (employee) {
             await syncEmployeeToFirebase(employee);
-
-            // Send greeting email (non-blocking)
             sendGreetingEmail(email, name, employeeId).catch(err => {
                 console.warn('Greeting email failed (non-blocking):', err.message);
             });
 
-            // Emit new employee notification
             const io = req.app.get('io');
             if (io) {
-                io.emit('employee_joined', {
-                    name: employee.name,
-                    employeeId: employee.employeeId,
-                    position: employee.position,
-                });
+                io.emit('employee_joined', { name: employee.name, employeeId: employee.employeeId, position: employee.position });
             }
 
-            res.status(201).json({
+            return res.status(201).json({
                 _id: employee._id,
                 username: employee.name,
                 email: employee.email,
@@ -261,14 +397,16 @@ const registerUser = async (req, res) => {
                 orgId: employee.orgId || 'default',
                 isEmployee: true
             });
-        } else {
-            res.status(400).json({ message: 'Invalid user data' });
         }
+        res.status(400).json({ message: 'Invalid user data' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// --------------------------------------------------------------------------
+// GET /api/auth/admins
+// --------------------------------------------------------------------------
 const getAdmins = async (req, res) => {
     try {
         const admins = await Admin.find({}).select('-password');
@@ -278,4 +416,76 @@ const getAdmins = async (req, res) => {
     }
 };
 
-module.exports = { loginUser, verifyFirebaseUser, createInitialAdmin, updateUserTheme, guestLogin, sendEmailOTP, verifyEmailOTP, registerUser, getAdmins };
+// --------------------------------------------------------------------------
+// PUT /api/auth/update-role/:userId  (admin only)
+// --------------------------------------------------------------------------
+const updateUserRole = async (req, res) => {
+    const { userId } = req.params;
+    const { role, userType } = req.body; // userType: 'admin' | 'employee'
+
+    const validAdminRoles = ['admin', 'ceo', 'manager', 'accountant'];
+    const validEmployeeRoles = ['employee', 'manager', 'ceo'];
+    const validRoles = [...new Set([...validAdminRoles, ...validEmployeeRoles])];
+
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: `Invalid role. Valid roles: ${validRoles.join(', ')}` });
+    }
+
+    try {
+        let user;
+        if (userType === 'admin') {
+            user = await Admin.findByIdAndUpdate(userId, { role }, { new: true }).select('-password');
+        } else {
+            user = await Employee.findByIdAndUpdate(userId, { role }, { new: true }).select('-password');
+        }
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const name = userType === 'admin' ? user.username : user.name;
+        const changedBy = req.userType === 'admin' ? req.user.username : req.user.name;
+
+        // Send role change email (non-blocking)
+        if (user.email) {
+            sendRoleChangeEmail(user.email, name, role, changedBy).catch(() => {});
+        }
+
+        res.json({ message: `Role updated to '${role}' for ${name}`, user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --------------------------------------------------------------------------
+// GET /api/auth/me
+// --------------------------------------------------------------------------
+const getMe = async (req, res) => {
+    res.json({
+        _id: req.user._id,
+        username: req.userType === 'admin' ? req.user.username : req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        profilePhoto: req.user.profilePhoto || '',
+        theme: req.user.theme || 'light',
+        orgId: req.user.orgId || 'default',
+        userType: req.userType
+    });
+};
+
+module.exports = {
+    loginUser,
+    logoutUser,
+    verifyFirebaseUser,
+    createInitialAdmin,
+    updateUserTheme,
+    guestLogin,
+    sendEmailOTP,
+    verifyEmailOTP,
+    registerUser,
+    getAdmins,
+    forgotPassword,
+    verifyResetOTP,
+    resetPassword,
+    changePassword,
+    updateUserRole,
+    getMe
+};

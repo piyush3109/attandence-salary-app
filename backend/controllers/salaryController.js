@@ -1,6 +1,7 @@
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
 const Advance = require('../models/Advance');
+const Task = require('../models/Task');
 const { DateTime } = require('luxon');
 const { exportToCSV, generateSalaryPDF } = require('../utils/exportUtils');
 
@@ -26,6 +27,15 @@ const getSalaryReport = async (req, res) => {
                 orgId,
                 date: { $gte: start.toJSDate(), $lte: end.toJSDate() }
             });
+
+            const completedTasks = await Task.find({
+                assignedTo: emp._id,
+                orgId,
+                status: 'completed',
+                updatedAt: { $gte: start.toJSDate(), $lte: end.toJSDate() }
+            });
+
+            const taskBonus = completedTasks.reduce((acc, curr) => acc + (curr.salaryBonus || 0), 0);
             // ... (rest of report mapping)
             let presentDays = 0;
             let paidLeaveDays = 0;
@@ -62,7 +72,7 @@ const getSalaryReport = async (req, res) => {
             // Calculate Overtime (1.5x rate)
             overtimePay = overtimeHours * hourlyRate * 1.5;
 
-            const totalEarnings = baseSalary + overtimePay;
+            const totalEarnings = baseSalary + overtimePay + taskBonus;
 
             return {
                 _id: emp._id,
@@ -148,6 +158,15 @@ const getSalarySlip = async (req, res) => {
             orgId,
             date: { $gte: start.toJSDate(), $lte: end.toJSDate() }
         });
+
+        const completedTasks = await Task.find({
+            assignedTo: emp._id,
+            orgId,
+            status: 'completed',
+            updatedAt: { $gte: start.toJSDate(), $lte: end.toJSDate() }
+        });
+
+        const taskBonus = completedTasks.reduce((acc, curr) => acc + (curr.salaryBonus || 0), 0);
         // ... (rest of slip logic)
         let presentDays = 0;
         let paidLeaveDays = 0;
@@ -180,7 +199,7 @@ const getSalarySlip = async (req, res) => {
         const manualBonus = Number(req.query.bonus) || 0;
         const manualFine = Number(req.query.fine) || 0;
 
-        const totalEarnings = baseSalary + overtimePay + manualBonus;
+        const totalEarnings = baseSalary + overtimePay + taskBonus + manualBonus;
         const totalDeductions = totalAdvance + manualFine;
 
         const slipData = [{
@@ -196,6 +215,7 @@ const getSalarySlip = async (req, res) => {
             overtimeHours,
             overtimePay,
             baseSalary,
+            taskBonus,
             totalAdvance: totalDeductions,
             totalEarnings,
             finalPayable: totalEarnings - totalDeductions
@@ -234,6 +254,15 @@ const getMySalaryHistory = async (req, res) => {
             date: { $gte: start.toJSDate(), $lte: end.toJSDate() }
         });
 
+        const completedTasks = await Task.find({
+            assignedTo: emp._id,
+            orgId,
+            status: 'completed',
+            updatedAt: { $gte: start.toJSDate(), $lte: end.toJSDate() }
+        });
+
+        const taskBonus = completedTasks.reduce((acc, curr) => acc + (curr.salaryBonus || 0), 0);
+
         let presentDays = 0;
         let paidLeaveDays = 0;
         let totalHours = 0;
@@ -261,7 +290,7 @@ const getMySalaryHistory = async (req, res) => {
         }
 
         const overtimePay = overtimeHours * hourlyRate * 1.5;
-        const totalEarnings = baseSalary + overtimePay;
+        const totalEarnings = baseSalary + overtimePay + taskBonus;
 
         res.json({
             month,
@@ -272,6 +301,7 @@ const getMySalaryHistory = async (req, res) => {
             overtimeHours,
             overtimePay,
             baseSalary,
+            taskBonus,
             totalAdvance,
             totalEarnings,
             finalPayable: totalEarnings - totalAdvance

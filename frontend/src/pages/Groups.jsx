@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Users,
     Plus,
@@ -9,7 +10,8 @@ import {
     Info,
     X,
     CheckCircle2,
-    ShieldAlert
+    ShieldAlert,
+    MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
@@ -18,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Groups = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [groups, setGroups] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -207,9 +210,18 @@ const Groups = () => {
                                     <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center text-primary-600">
                                         <Users className="w-6 h-6" />
                                     </div>
-                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2">
-                                        <MoreVertical className="w-5 h-5" />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            title="Chat with Squad"
+                                            onClick={() => navigate('/messages', { state: { activeGroup: group } })}
+                                            className="text-primary-500 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 p-2 rounded-xl transition-colors"
+                                        >
+                                            <MessageSquare className="w-5 h-5" />
+                                        </button>
+                                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                            <MoreVertical className="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">{group.name}</h3>
