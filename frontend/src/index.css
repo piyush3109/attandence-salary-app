@@ -8,9 +8,21 @@
   --font-sans: 'Outfit', sans-serif;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   @apply bg-gray-50 text-gray-900 transition-colors duration-200 antialiased;
   font-family: var(--font-sans);
+}
+
+* {
+  min-width: 0;
 }
 
 .dark body {

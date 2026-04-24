@@ -94,8 +94,9 @@ const Sidebar = () => {
     return (
         <>
             <button
-                className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md lg:hidden"
+                className="fixed left-4 z-50 p-2.5 bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 backdrop-blur lg:hidden top-[calc(env(safe-area-inset-top,0px)+0.75rem)]"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label="Toggle navigation menu"
             >
                 {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -108,7 +109,7 @@ const Sidebar = () => {
             )}
 
             <aside className={cn(
-                "fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transition-all duration-500 ease-in-out lg:translate-x-0",
+                "fixed inset-y-0 left-0 z-40 w-[min(85vw,18rem)] lg:w-72 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transition-all duration-500 ease-in-out lg:translate-x-0",
                 isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
             )}>
                 <div className="flex flex-col h-full">

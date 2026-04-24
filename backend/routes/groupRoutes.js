@@ -6,11 +6,21 @@ const {
     getGroups,
     getGroupById,
     addMember,
-    removeMember
+    removeMember,
+    requestToJoin,
+    reviewJoinRequest,
+    blockMember,
+    reportGroup,
+    assignGroupAdmin,
+    createChannel,
+    joinChannel,
+    createPost,
+    voteOnPoll,
+    updateOpsVisibility
 } = require('../controllers/groupController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.use(protect); // All group routes are protected
+router.use(protect);
 
 router.route('/')
     .post(createGroup)
@@ -18,7 +28,7 @@ router.route('/')
 
 router.route('/:id')
     .get(getGroupById)
-    .put(protect, async (req, res) => {
+    .put(async (req, res) => {
         try {
             const group = await Group.findByIdAndUpdate(req.params.id, req.body, { new: true });
             res.json(group);
@@ -27,10 +37,20 @@ router.route('/:id')
         }
     });
 
-router.route('/:id/members')
-    .post(addMember);
+router.post('/:id/join', requestToJoin);
+router.post('/:id/join/review', reviewJoinRequest);
+router.post('/:id/report', reportGroup);
+router.post('/:id/block', blockMember);
+router.post('/:id/admins/assign', assignGroupAdmin);
+router.post('/:id/ops-visibility', updateOpsVisibility);
 
-router.route('/:id/members/:memberId')
-    .delete(removeMember);
+router.route('/:id/members').post(addMember);
+router.route('/:id/members/:memberId').delete(removeMember);
+
+router.post('/:id/channels', createChannel);
+router.post('/:id/channels/:channelId/join', joinChannel);
+
+router.post('/:id/posts', createPost);
+router.post('/:id/posts/:postId/vote', voteOnPoll);
 
 module.exports = router;

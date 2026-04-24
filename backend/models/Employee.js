@@ -52,6 +52,10 @@ const employeeSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    profileBackground: {
+        type: String,
+        default: '',
+    },
     guarantor: {
         name: String,
         phone: String,
